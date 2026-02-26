@@ -9,6 +9,16 @@ Timothy Huy Tran
 **Project Structure:**
 
 ```
+ContributorPrioCode/
+├──Dalton/
+├──Partha/
+├──Sahir/
+└──Tim/
+ContributorProrUML/
+├──Dalton/
+├──Partha/
+├──Sahir/
+└──Tim/
 GuildQuest/
 └──src/main/
    ├──java/or/example/
