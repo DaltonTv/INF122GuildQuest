@@ -1,0 +1,900 @@
+"""
+Changes and a link to the AI chat is in the document.
+
+GuildQuest - A text-based RPG campaign manager
+
+This system allows users to track their progress throughout various adventures
+using campaigns, quest events, realms, and world time management.
+
+"""
+
+from typing import List, Optional
+from enum import Enum
+from datetime import datetime
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+# Constants
+HOURS_PER_DAY: int = 24
+MINUTES_PER_HOUR: int = 60
+MINUTES_PER_DAY: int = HOURS_PER_DAY * MINUTES_PER_HOUR
+
+
+# Enumerations (as shown in UML)
+class SharePermission(Enum):
+    """Permission levels for sharing campaigns"""
+    VIEW_ONLY = "VIEW_ONLY"
+    COLLABORATIVE = "COLLABORATIVE"
+
+
+# Time display preference
+class TimeDisplay(Enum):
+    """User preference for time display: world, local, or both"""
+    WORLD = "WORLD"
+    LOCAL = "LOCAL"
+    BOTH = "BOTH"
+
+
+# WorldTime class - manages in-game time
+@dataclass(frozen=True)
+class WorldTime:
+    days: int = 0
+    hours: int = 0
+    minutes: int = 0
+
+    def __post_init__(self):
+        total = self._to_total_minutes(self.days, self.hours, self.minutes)
+        normalized = self._from_total_minutes(total)
+        object.__setattr__(self, "days", normalized.days)
+        object.__setattr__(self, "hours", normalized.hours)
+        object.__setattr__(self, "minutes", normalized.minutes)
+
+    @staticmethod
+    def _to_total_minutes(days: int, hours: int, minutes: int) -> int:
+        return (
+            days * MINUTES_PER_DAY +
+            hours * MINUTES_PER_HOUR +
+            minutes
+        )
+
+    @classmethod
+    def _from_total_minutes(cls, total_minutes: int) -> "WorldTime":
+        days = total_minutes // MINUTES_PER_DAY
+        remaining = total_minutes % MINUTES_PER_DAY
+        hours = remaining // MINUTES_PER_HOUR
+        minutes = remaining % MINUTES_PER_HOUR
+        return cls(days, hours, minutes)
+
+    def to_total_minutes(self) -> int:
+        return self._to_total_minutes(self.days, self.hours, self.minutes)
+    
+    def add(self, other: "WorldTime") -> "WorldTime":
+        total = self.to_total_minutes() + other.to_total_minutes()
+        return self._from_total_minutes(total)
+
+    def subtract(self, other: "WorldTime") -> "WorldTime":
+        total = self.to_total_minutes() - other.to_total_minutes()
+        return self._from_total_minutes(total)
+    
+    def __add__(self, other: "WorldTime") -> "WorldTime":
+        return self.add(other)
+
+    def __sub__(self, other: "WorldTime") -> "WorldTime":
+        return self.subtract(other)
+    
+    def __str__(self) -> str:
+        time_str = f"{self.hours:02}:{self.minutes:02}"
+        if self.days > 0:
+            return f"Day {self.days}, {time_str}"
+        return time_str
+
+
+# Realm class - represents physical locations in the game world
+class Realm:
+    """Represents a physical location within the game world"""
+    
+    def __init__(self, name: str, map_id: int, time_offset: WorldTime):
+        self.name: str = name
+        self.map_id: int = map_id
+        self.time_offset: WorldTime = time_offset
+        self.description: str = ""
+    
+    def get_local_time(self, world_time: WorldTime) -> WorldTime:
+        return world_time + self.time_offset
+    
+    def __str__(self) -> str:
+        return f"Realm: {self.name} (Map ID: {self.map_id})"
+    
+    def __repr__(self) -> str:
+        return f"Realm(name='{self.name}', map_id={self.map_id})"
+    
+class TimeDisplayStrategy(ABC):
+    """Strategy interface for formatting time display."""
+
+    @abstractmethod
+    def format(self, world_time: WorldTime, realm: Realm) -> str:
+        pass
+
+class WorldOnlyStrategy(TimeDisplayStrategy):
+    def format(self, world_time: WorldTime, realm: Realm) -> str:
+        return f"WORLD: {world_time}"
+
+
+class LocalOnlyStrategy(TimeDisplayStrategy):
+    def format(self, world_time: WorldTime, realm: Realm) -> str:
+        local = realm.get_local_time(world_time)
+        return f"LOCAL: {local}"
+
+
+class BothTimeStrategy(TimeDisplayStrategy):
+    def format(self, world_time: WorldTime, realm: Realm) -> str:
+        local = realm.get_local_time(world_time)
+        return f"WORLD: {world_time} | LOCAL: {local}"
+
+
+# InventoryItem class - represents items in character inventory
+class InventoryItem:
+    """Represents an item in a character's inventory"""
+    
+    def __init__(self, name: str):
+        self.name: str = name
+    
+    def update_item_name(self, new_name: str) -> None:
+        """Update the item's name"""
+        self.name = new_name
+    
+    def __str__(self) -> str:
+        return f"Item: {self.name}"
+    
+    def __repr__(self) -> str:
+        return f"InventoryItem(name='{self.name}')"
+
+
+# Character class - represents a character in the campaign
+class Character:
+    """Represents a character with name, class, level, and inventory"""
+
+    def __init__(self, name: str, char_class: str):
+        self.name: str = name
+        self.char_class: str = char_class
+        self.level: int = 1
+        self.inventory: List[InventoryItem] = []
+    
+    def add_item(self, item: InventoryItem) -> None:
+        """Add an item to the character's inventory"""
+        self.inventory.append(item)
+    
+    def remove_item(self, item: InventoryItem) -> None:
+        """Remove an item from the character's inventory"""
+        if item in self.inventory:
+            self.inventory.remove(item)
+
+    def find_item_by_name(self, name: str):
+        """Return the first inventory item matching name"""
+        name_lower = name.lower()
+        for item in self.inventory:
+            if item.name.lower() == name_lower:
+                return item
+        return None
+    
+    def __str__(self) -> str:
+        return f"{self.name} - Level {self.level} {self.char_class}"
+    
+    def __repr__(self) -> str:
+        return f"Character(name='{self.name}', class='{self.char_class}', level={self.level})"
+
+class CharacterFactory:
+    """Factory: centralizes Character creation and validation"""
+
+    ALLOWED_CLASSES = {"warrior", "archer", "mage"}
+
+    @classmethod
+    def create_character(cls, name:str, char_class: str) -> Character:
+        if not name:
+            raise ValueError("Character name cannot be empty.")
+        if char_class not in cls.ALLOWED_CLASSES:
+            raise ValueError(
+                f"Invalid class '{char_class}'. "
+                f"Choose from: {', '.join(sorted(cls.ALLOWED_CLASSES))}"
+            )
+        return Character(name, char_class)
+
+# QuestEvent class - represents individual gameplay events
+class QuestEvent:
+    """Simulates individual gameplay events within a campaign"""
+    
+    def __init__(self, title: str, start_time: WorldTime, realm: Realm):
+        self.title: str = title
+        self.start_time: WorldTime = start_time
+        self.end_time: Optional[WorldTime] = None
+        self.realm: Realm = realm
+        self.participants: List[Character] = []
+        self.objectives: List[str] = []
+    
+    def set_start_time(self, start_time: WorldTime) -> None:
+        """Set the start time for the quest event"""
+        self.start_time = start_time
+    
+    def set_end_time(self, end_time: WorldTime) -> None:
+        """Set the end time for the quest event"""
+        self.end_time = end_time
+    
+    def set_realm(self, realm: Realm) -> None:
+        """Set the realm where the event occurs"""
+        self.realm = realm
+    
+    def update_title(self, new_title: str) -> None:
+        """Update the quest event title"""
+        self.title = new_title
+    
+    def update_realm(self, new_realm: Realm) -> None:
+        """Update the realm for the quest event"""
+        self.realm = new_realm
+    
+    def update_end_time(self, end_time: WorldTime) -> None:
+        """Update the end time and realm for the quest event"""
+        self.end_time = end_time
+        # Could use end_realm for location tracking
+    
+    def __str__(self) -> str:
+        realm_str = f" in {self.realm.name}" if self.realm else ""
+        time_str = f" at {self.start_time}" if self.start_time else ""
+        return f"Quest: {self.title}{realm_str}{time_str}"
+    
+    def __repr__(self) -> str:
+        return f"QuestEvent(title='{self.title}')"
+
+class QuestEventBuilder:
+    """Builder: assembles a QuestEvent step-by-step, enforcing mandatory fields, open to optional fields"""
+
+    def __init__(self):
+        self.title: Optional[str] = None
+        self.start_time: Optional[WorldTime] = None
+        self.end_time: Optional[WorldTime] = None
+        self.realm: Optional[Realm] = None
+
+    def set_title(self, title: str) -> "QuestEventBuilder":
+        self.title = title
+        return self
+    
+    def set_start_time(self, start_time: WorldTime) -> "QuestEventBuilder":
+        self.start_time = start_time
+        return self
+    
+    def set_end_time(self, end_time: WorldTime) -> "QuestEventBuilder":
+        self.end_time = end_time
+        return self
+    
+    def set_realm(self, realm: Realm) -> "QuestEventBuilder":
+        self.realm = realm
+        return self
+    
+    def build(self) -> QuestEvent:
+        missing = [f for f, v in [("title", self.title),
+                                  ("start_time", self.start_time),
+                                  ("realm", self.realm)] if not v]
+        if missing:
+            raise ValueError(f"QuestEvent missing required fields: {', '.join(missing)}")
+        qe = QuestEvent(self.title, self.start_time, self.realm)
+        if self.end_time:
+            qe.set_end_time(self.end_time)
+        return qe
+
+# Campaign class - contains quest events and manages campaigns
+class Campaign:
+    """Represents a campaign containing multiple quest events"""
+    
+    def __init__(self, name: str):
+        self.name: str = name
+        self.id: Optional[int] = None
+        self.owner_id: Optional[int] = None
+        self.quest_events: List[QuestEvent] = []
+        self.characters: List[Character] = []
+    
+    def add_quest_event(self, title: str, start_time: WorldTime, 
+                       end_time: Optional[WorldTime], realm: Realm) -> QuestEvent:
+        """Add a quest event to the campaign (as shown in sequence diagram)"""
+        # Create quest event
+        quest_event = QuestEvent(title, start_time, realm)
+        
+        # Set start time
+        quest_event.set_start_time(start_time)
+        
+        # Set realm
+        quest_event.set_realm(realm)
+        
+        # Get local time from realm
+        local_time = realm.get_local_time(start_time)
+        
+        # Set end time if provided
+        if end_time:
+            quest_event.set_end_time(end_time)
+        
+        # Add to quest events list
+        self.quest_events.append(quest_event)
+        
+        return quest_event
+
+    def rename(self, new_name: str) -> None:
+        """Rename the campaign to a new name."""
+        self.name = new_name
+
+    def archive(self) -> None:
+        """Archive the campaign by appending ' (archived)' to the name.
+
+        If already archived, this is a no-op.
+        """
+        suffix = " (archived)"
+        if not self.name.endswith(suffix):
+            self.name = f"{self.name}{suffix}"
+    
+    def remove_quest_event(self, quest_event: QuestEvent) -> None:
+        """Remove a quest event from the campaign"""
+        if quest_event in self.quest_events:
+            self.quest_events.remove(quest_event)
+    
+    def add_character(self, character: Character) -> None:
+        """Add a character to the campaign"""
+        self.characters.append(character)
+    
+    def remove_character(self, character: Character) -> None:
+        """Remove a character from the campaign"""
+        if character in self.characters:
+            self.characters.remove(character)
+    
+    def set_visibility(self, is_public: bool, permission: SharePermission) -> None:
+        """Set the visibility and permissions for the campaign"""
+        # Placeholder for future implementation
+        pass
+    
+    def __str__(self) -> str:
+        return f"Campaign: {self.name} ({len(self.quest_events)} events, {len(self.characters)} characters)"
+    
+    def __repr__(self) -> str:
+        return f"Campaign(name='{self.name}')"
+
+
+# Settings class - stores user preferences
+class Settings:
+    """Stores user settings and preferences"""
+    
+    def __init__(self):
+        self.realm: Optional[Realm] = None
+        self.theme: str = "default"
+        self.language: str = "en"
+        # Default time display preference: show both world and local times
+        self.time_display_strategy: TimeDisplayStrategy = BothTimeStrategy()
+    
+    def set_display_preferences(self, theme: str) -> None:
+        """Set display preferences like theme"""
+        self.theme = theme
+
+    def set_time_display(self, preference: TimeDisplay) -> None:
+        if preference == TimeDisplay.WORLD:
+            self.time_display_strategy = WorldOnlyStrategy()
+        elif preference == TimeDisplay.LOCAL:
+            self.time_display_strategy = LocalOnlyStrategy()
+        else:
+            self.time_display_strategy = BothTimeStrategy()
+    
+    def update_settings(self, **kwargs) -> None:
+        """Update multiple settings at once"""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+    
+    def __str__(self) -> str:
+        return f"Settings(theme={self.theme}, language={self.language}, time_display={self.time_display_strategy.__class__.__name__})"
+
+
+# User class - represents a user of the system
+class User:
+    """Represents a user using the GuildQuest system"""
+    
+    def __init__(self, username: str):
+        self.username: str = username
+        self.campaigns: List[Campaign] = []
+        self.characters: List[Character] = []
+        self.settings: Settings = Settings()
+    
+    def add_campaign(self, campaign: Campaign) -> None:
+        """Add a campaign to the user's list"""
+        self.campaigns.append(campaign)
+        campaign.owner_id = id(self)  # Simple owner tracking
+    
+    def remove_campaign(self, campaign: Campaign) -> None:
+        """Remove a campaign from the user's list"""
+        if campaign in self.campaigns:
+            self.campaigns.remove(campaign)
+    
+    def __str__(self) -> str:
+        return f"User: {self.username} ({len(self.campaigns)} campaigns)"
+    
+    def __repr__(self) -> str:
+        return f"User(username='{self.username}')"
+
+
+def print_time_for_event(settings: Settings, world_time: WorldTime, realm: Realm, prefix: str = "") -> None:
+    """Print the time(s) for an event according to preference, with an optional prefix.
+
+    Example: `print_time_for_event(user.settings, start, realm, prefix="  ")`
+    """
+    formatted = settings.time_display_strategy.format(world_time, realm)
+    print(f"{prefix}{formatted}")
+
+def generate_realms() -> List[Realm]:
+    """Generate 5 realms to be used for QuestEvents"""
+    realms: List[Realm] = []
+
+    r1 = Realm("California", 1, WorldTime(0, 1, 0))
+    r1.description = "Sunny fields, barren desserts, and cold mountains."
+
+    r2 = Realm("New York", 2, WorldTime(0, 1, 30))
+    r2.description = "Small, but heavily dense. Center of commerce."
+
+    r3 = Realm("Texas", 3, WorldTime(0, 0, 45))
+    r3.description = "Large. Everything seems to be bigger here..."
+
+    r4 = Realm("Florida", 4, WorldTime(0, 3, 15))
+    r4.description = "A costal location, known for fishing and sea transportation."
+
+    r5 = Realm("Alaska", 5, WorldTime(0, 5, 0))
+    r5.description = "Icy, barren, and many natural disasters, yet the creatures here can brave the forces of nature."
+
+    realms.extend([r1, r2, r3, r4, r5])
+    return realms
+
+def manage_campaigns(current_user: User) -> None:
+    """Handle campaign management for the given user."""
+    while True:
+        print()
+        print("=== Campaigns ===")
+
+        if current_user.campaigns:
+            for i, c in enumerate(current_user.campaigns, start=1):
+                print(f"  {i}. {c}")
+        else:
+            print("No campaigns.")
+
+        print()
+        print("What would you like to do?")
+        print("  1. Add campaign")
+        print("  2. Remove campaign")
+        print("  3. Update campaign")
+        print("  4. Select campaign")
+        print("  b. Back")
+
+        campaign_choice = input("Enter choice (1, 2, 3, 4, or b): ").strip().lower()
+        if campaign_choice == "b":
+            break
+        
+        # add campaign
+        if campaign_choice == "1":
+            name = input("Enter campaign name: ").strip()
+            if not name:
+                print("Campaign name cannot be empty.")
+                continue
+            campaign = Campaign(name)
+            current_user.add_campaign(campaign)
+            print(f"Campaign '{name}' added.")
+            continue
+
+        # remove campaign
+        if campaign_choice == "2":
+            if not current_user.campaigns:
+                print("No campaigns to remove.")
+                continue
+            campaign = select_campaign(current_user.campaigns)
+            if campaign:
+                current_user.remove_campaign(campaign)
+                print(f"Removed campaign '{campaign.name}'.")
+        
+        # update campaign
+        if campaign_choice == "3":
+            if not current_user.campaigns:
+                print("No campaigns to update.")
+                continue
+            campaign = select_campaign(current_user.campaigns)
+                
+            while True:
+                print()
+                print(f"=== Editing Campaign: {campaign.name} ===")
+                print("  1. Rename campaign")
+                print("  2. Archive campaign")
+                print("  3. Change visibility")
+                print("  b. Back")
+                edit_choice = input("Enter choice (1,2,3,b): ").strip().lower()
+                if edit_choice == "b":
+                    break
+
+                # rename campaign
+                if edit_choice == "1":
+                    new_name = input("Enter new campaign name: ").strip()
+                    if new_name:
+                        campaign.rename(new_name)
+                        print("Campaign renamed.")
+                    else:
+                        print("Name cannot be empty.")
+                
+                # archive campaign
+                elif edit_choice == "2":
+                    campaign.archive()
+                    print("Campaign archived.")
+                
+                # change visibility for campaign
+                elif edit_choice == "3":
+                    print("Set visibility:")
+                    print("  1. View only")
+                    print("  2. Collaborative")
+                    vis = input("Enter choice: ").strip()
+                    if vis == "1":
+                        campaign.set_visibility(True, SharePermission.VIEW_ONLY)
+                        print("Visibility set to VIEW_ONLY.")
+                    elif vis == "2":
+                        campaign.set_visibility(True, SharePermission.COLLABORATIVE)
+                        print("Visibility set to COLLABORATIVE.")
+                    else:
+                        print("Invalid choice.")
+                else:
+                    print("Invalid option.")
+            continue
+
+        if campaign_choice == "4":
+            if not current_user.campaigns:
+                print("No campaigns to select.")
+                continue
+            campaign = select_campaign(current_user.campaigns)
+            # campaign, can go into quest events or back to campaign manager/list
+            while True:
+                print()
+                print(f"=== Campaign: {campaign.name} ===")
+                if campaign.quest_events:
+                    for i, qe in enumerate(campaign.quest_events, start=1):
+                        print(f"  {i}. {qe.title}")
+                else:
+                    print("No quest events.")
+                print()
+                print("  1. Add QuestEvent")
+                print("  2. Remove QuestEvent")
+                print("  3. Update QuestEvent")
+                print("  4. Select QuestEvent")
+                print("  b. Back to Campaign Manager")
+                qe_choice = input("Enter choice: ").strip().lower()
+                if qe_choice == "b":
+                    break
+
+                # add quest event
+                if qe_choice == "1":
+                    title = input("Enter QuestEvent title: ").strip()
+                    if not title:
+                        print("Title cannot be empty.")
+                        continue
+                    start_time = prompt_world_time()
+                    if not start_time:
+                        continue
+                    realm = select_realm()
+                    if realm is None:
+                        continue
+                    add_end_time = input("Add an end time? (y/n): ").strip().lower()
+                    end_time = None
+                    if add_end_time == "y":
+                        end_time = prompt_world_time()
+                    try:
+                        builder = (QuestEventBuilder()
+                                   .set_title(title)
+                                   .set_start_time(start_time)
+                                   .set_realm(realm))
+                        if end_time:
+                            builder = builder.set_end_time(end_time)
+                        qe = builder.build()
+                    except ValueError as e:
+                        print(f"Error building quest event: {e}")
+                        continue
+                    campaign.quest_events.append(qe)
+                    print(f"QuestEvent '{title}' added.")
+                    continue
+                
+                # remove quest event
+                if qe_choice == "2":
+                    if not campaign.quest_events:
+                        print("No quest events to remove.")
+                        continue
+                    qe = select_quest_event(campaign.quest_events)
+                    if qe:
+                        campaign.remove_quest_event(qe)
+                        print(f"Removed '{qe.title}'.")
+
+                # edit quest event
+                if qe_choice == "3":
+                    if not campaign.quest_events:
+                        print("No quest events to update.")
+                        continue
+                    qe = select_quest_event(campaign.quest_events)
+                    while True:
+                        print()
+                        print(f"=== Editing QuestEvent: {qe.title} ===")
+                        print("  1. Rename QuestEvent")
+                        print("  2. Change start time")
+                        print("  3. Change realm")
+                        print("  b. Back")
+                        edit_choice = input("Enter choice: ").strip().lower()
+                        if edit_choice == "b":
+                            break
+
+                        # rename quest event
+                        if edit_choice == "1":
+                            new_title = input("Enter new title: ").strip()
+                            if new_title:
+                                qe.update_title(new_title)
+                                print("QuestEvent renamed.")
+                            else:
+                                print("Title cannot be empty.")
+
+                        # change start time
+                        elif edit_choice == "2":
+                            new_time = prompt_world_time()
+                            if new_time:
+                                qe.set_start_time(new_time)
+                                print("Start time updated.")
+                        
+                        # change realm of quest event
+                        elif edit_choice == "3":
+                            new_realm = select_realm()
+                            if new_realm:
+                                qe.update_realm(new_realm)
+                                print("Realm updated.")
+                        else:
+                            print("Invalid option.")
+                    continue
+
+                # in quest event, can show realm details or go back to quest event manager/list
+                if qe_choice == "4":
+                    if not campaign.quest_events:
+                        print("No quest events to select.")
+                        continue
+                    quest_event = select_quest_event(campaign.quest_events)
+                    print()
+                    print("=== Quest Event Details ===")
+                    print(f"Title: {quest_event.title}")
+                    print(f"Start Time: {quest_event.start_time}")
+                    print(f"Realm: {quest_event.realm.name}")
+                    while True:
+                        print()
+                        print("What would you like to do?")
+                        print("  1. View realm details")
+                        print("  b. Back to QuestEvent list")
+                        detail_choice = input("Enter choice: ").strip().lower()
+                        if detail_choice == "b":
+                            break
+                        if detail_choice == "1":
+                            realm = quest_event.realm
+                            world_time = quest_event.start_time
+                            print()
+                            print("=== Realm Information ===")
+                            print(f"Realm Name: {realm.name}")
+                            print(f"Description: {realm.description}")
+                            formatted = current_user.settings.time_display_strategy.format(world_time, realm)
+                            print(f"Time: {formatted}")
+                    continue
+                print("Invalid choice.")
+
+def prompt_world_time():
+    """Prompt user for day, hour, and minute and return a WorldTime object."""
+    try:
+        days = int(input("Day (0-31): "))
+        hours = int(input("Hour (0-23): "))
+        minutes = int(input("Minute (0-59): "))
+        return WorldTime(days, hours, minutes)
+    except ValueError:
+        print("Invalid time input.")
+        return None
+    
+def select_realm() -> Optional[Realm]:
+    realms = generate_realms()
+    print("Choose a realm:")
+    for i, r in enumerate(realms, start=1):
+        print(f"  {i}. {r.name}")
+    sel = input("Enter realm number: ").strip()
+    try:
+        return realms[int(sel) - 1]
+    except (ValueError, IndexError):
+        print("Invalid realm selection.")
+        return None
+    
+def select_campaign(campaigns: List[Campaign]) -> Optional[Campaign]:
+    sel = input("Enter campaign number: ").strip()
+    try:
+        return campaigns[int(sel) -1]
+    except (ValueError, IndexError):
+        print("Invalid selection.")
+        return None
+    
+def select_quest_event(quest_events: List[QuestEvent]) -> Optional[QuestEvent]:
+    sel = input("Enter QuestEvent Number: ").strip()
+    try:
+        return quest_events[int(sel) - 1]
+    except (ValueError, IndexError):
+        print("Invalid selection.")
+        return None
+
+def main():
+    ALLOWED_ITEMS = {"sword", "bow", "staff"}
+
+    print("Welcome to GuildQuest")
+
+    users: List[User] = []
+    current_user: Optional[User] = None
+
+    while True:
+        # User selection/creation
+        while current_user is None:
+            print()
+            print("User Menu:")
+            print("  1. Create a new user")
+            print("  2. Select an existing user")
+            print("  q. Quit")
+
+            choice = input("Enter choice (1, 2, or q): ").strip().lower()
+            if choice == "q":
+                print("Goodbye!")
+                return
+            
+            # create user
+            if choice == "1":
+                username = input("Enter username: ").strip()
+                if not username:
+                    print("Username cannot be empty.")
+                    continue
+                user = User(username)
+                users.append(user)
+                print(f"User '{username}' created.")
+                continue
+
+            # select user
+            if choice == "2":
+                if not users:
+                    print("No users available. Create one first.")
+                    continue
+                print("Select a user:")
+                for i, u in enumerate(users, start=1):
+                    print(f"  {i}. {u.username}")
+                sel = input("Enter number (or 'b' to go back): ").strip().lower()
+                if sel == "b":
+                    continue
+                try:
+                    idx = int(sel) - 1
+                    current_user = users[idx]
+                    print(f"Selected user: {current_user.username}")
+                except Exception:
+                    print("Invalid selection.")
+
+        # Main user menu
+        print()
+        print(f"Welcome {current_user.username}! What would you like to do?")
+        print("  1. Create a character")
+        print("  2. Select a character")
+        print("  3. Change settings")
+        print("  4. Manage campaigns")
+        print("  b. Back to user menu")
+
+        choice = input("Enter choice: ").strip().lower()
+        if choice == "b":
+            current_user = None
+            continue
+
+        # character creation
+        if choice == "1":
+            name = input("Enter character name: ").strip()
+            print(f"Choose a class: {', '.join(sorted(CharacterFactory.ALLOWED_CLASSES))}")
+            char_class = input("Enter character class: ").strip().lower()
+            try:
+                char = CharacterFactory.create_character(name, char_class)
+            except ValueError as e:
+                print(f"Error: {e}")
+                continue
+            current_user.characters.append(char)
+            print(f"Created character: {char}")
+            continue
+
+        # character select, leads to inventory
+        if choice == "2":
+            if not current_user.characters:
+                print("No characters available. Create one first.")
+                continue
+            print("Select a character:")
+            for i, c in enumerate(current_user.characters, start=1):
+                print(f"  {i}. {c}")
+            sel = input("Enter number (or 'b' to go back): ").strip().lower()
+            if sel == "b":
+                continue
+            try:
+                idx = int(sel) - 1
+                selected_character = current_user.characters[idx]
+            except Exception:
+                print("Invalid selection.")
+                continue
+
+            # inventory menu
+            while True:
+                print()
+                print(f"=== {selected_character.name}'s Inventory ===")
+                if selected_character.inventory:
+                    for i, item in enumerate(selected_character.inventory, start=1):
+                        print(f"  {i}. {item}")
+                else:
+                    print("No items found")
+                print()
+                print("  1. Add an item")
+                print("  2. Remove an item")
+                print("  3. Update an item")
+                print("  b. Back")
+                inv_choice = input("Enter choice: ").strip().lower()
+                if inv_choice == "b":
+                    break
+                
+                # add item
+                if inv_choice == "1":
+                    print("Choose an item: sword, bow, staff")
+                    item_name = input("Enter item name: ").strip().lower()
+                    if item_name not in ALLOWED_ITEMS:
+                        print("Invalid item.")
+                        continue
+                    selected_character.add_item(InventoryItem(item_name))
+                    print(f"Added {item_name} to inventory.")
+                    continue
+                
+                # remove item
+                if inv_choice == "2":
+                    name = input("Enter the name of the item to remove: ").strip().lower()
+                    found = selected_character.find_item_by_name(name)
+                    if found:
+                        selected_character.remove_item(found)
+                        print(f"Removed {found.name}.")
+                    else:
+                        print("Item not found.")
+                    continue
+                
+                # update item
+                if inv_choice == "3":
+                    name = input("Enter the name of the item to update: ").strip().lower()
+                    found = selected_character.find_item_by_name(name)
+                    if not found:
+                        print("Item not found.")
+                        continue
+                    new_name = input("Enter new item name: ").strip().lower()
+                    found.update_item_name(new_name)
+                    print("Item updated.")
+                    continue
+                print("Invalid choice.")
+
+        # setting menu
+        if choice == "3":
+            ALLOWED_THEMES = {"classic", "modern"}
+            print()
+            print("=== Settings Menu ===")
+            print(f"Current theme: {current_user.settings.theme}")
+            print(f"Current time display: {current_user.settings.time_display_strategy.__class__.__name__}")
+            theme_input = input("Enter theme (classic/modern or Enter to skip): ").strip().lower()
+            if theme_input in ALLOWED_THEMES:
+                current_user.settings.set_display_preferences(theme_input)
+                print("Theme updated.")
+            time_input = input("Enter time display (world/local/both or Enter to skip): ").strip().lower()
+            if time_input == "world":
+                current_user.settings.set_time_display(TimeDisplay.WORLD)
+            elif time_input == "local":
+                current_user.settings.set_time_display(TimeDisplay.LOCAL)
+            elif time_input == "both":
+                current_user.settings.set_time_display(TimeDisplay.BOTH)
+            print("Settings updated.")
+            continue
+
+        # campaign manager
+        if choice == "4":
+            manage_campaigns(current_user)
+            continue
+
+        print("Invalid choice.")
+
+
+if __name__ == "__main__":
+    main()
