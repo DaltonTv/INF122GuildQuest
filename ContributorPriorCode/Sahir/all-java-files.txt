@@ -1,0 +1,1373 @@
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\app\GuildQuestApp.java ====================
+package app;
+
+import components.GuildQuest;
+import ui.ConsoleUI;
+
+public class GuildQuestApp
+{
+    public static void main(String[] args)
+    {
+        GuildQuest system = GuildQuest.getInstance();
+        ConsoleUI ui = new ConsoleUI(system);
+        ui.run();
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\Campaign.java ====================
+package components;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Campaign
+{
+    private String name;
+    private Realm realm;
+    private boolean isPublic;
+
+
+    private boolean archived;
+    private String visibility;
+
+    private List<QuestEvent> questEvents;
+
+    public Campaign(String name, Realm realm)
+    {
+        this.name = name;
+        this.realm = realm;
+        this.archived = false;
+        this.visibility = "PRIVATE";
+        this.questEvents = new ArrayList<QuestEvent>();
+        this.isPublic = false;
+    }
+
+    public String getName()
+    {
+        return name;
+    }
+
+    public void setName(String name)
+    {
+        if (name != null && name.trim().length() > 0)
+        {
+            this.name = name.trim();
+        }
+    }
+
+    public Realm getRealm()
+    {
+        return realm;
+    }
+
+    public boolean isArchived()
+    {
+        return archived;
+    }
+
+    public void setArchived(boolean archived)
+    {
+        this.archived = archived;
+    }
+
+    public void addQuestEvent(QuestEvent e)
+    {
+        questEvents.add(e);
+    }
+
+    public void removeQuestEvent(int index)
+    {
+        if (index >= 0 && index < questEvents.size())
+        {
+            questEvents.remove(index);
+        }
+    }
+
+    public List<QuestEvent> getQuestEvents()
+    {
+        return questEvents;
+    }
+
+    @Override
+    public String toString()
+    {
+        String status = archived ? "ARCHIVED" : "ACTIVE";
+        return name + " @ " + realm.getName() + " [" + getVisibilityText() + ", " + status + "]";
+    }
+
+    public boolean isPublic()
+    {
+        return isPublic;
+    }
+
+    public void togglePublic()
+    {
+        isPublic = !isPublic;
+    }
+
+    public String getVisibilityText()
+    {
+        return isPublic ? "PUBLIC" : "PRIVATE";
+    }
+
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\Character.java ====================
+package components;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Character
+{
+    private String name;
+    private String characterClass;
+    private int level;
+
+    private List<Campaign> campaigns;
+
+    public Character(String name, String characterClass)
+    {
+        this.name = name;
+        this.characterClass = characterClass;
+        this.level = 1;
+        this.campaigns = new ArrayList<Campaign>();
+    }
+
+    public String getName()
+    {
+        return name;
+    }
+
+    public String getCharacterClass()
+    {
+        return characterClass;
+    }
+
+    public int getLevel()
+    {
+        return level;
+    }
+
+    public void setLevel(int level)
+    {
+        if (level >= 1)
+        {
+            this.level = level;
+        }
+    }
+
+    // Campaigns owned by this character
+    public void addCampaign(Campaign c)
+    {
+        campaigns.add(c);
+    }
+
+    public List<Campaign> getCampaigns()
+    {
+        return campaigns;
+    }
+
+    @Override
+    public String toString()
+    {
+        return name + ": lvl " + level + ", of class " + characterClass;
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\GuildQuest.java ====================
+package components;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class GuildQuest
+{
+    private static GuildQuest instance;
+
+    public static GuildQuest getInstance()
+    {
+        if (instance == null)
+        {
+            instance = new GuildQuest(); 
+        }
+        return instance;
+    }
+
+    private List<User> users;
+    private List<Realm> realms;
+    private WorldClockTime currentTime;
+
+    private GuildQuest()
+    {
+        users = new ArrayList<User>();
+        realms = new ArrayList<Realm>();
+        currentTime = new WorldClockTime(0, 0, 0);
+
+        initializeRealms();
+    }
+
+    private void initializeRealms()
+    {
+        realms.add(new Realm("Kato", "Desert trade outpost"));
+        realms.add(new Realm("Mult", "Industrial megacity"));
+        realms.add(new Realm("Kreon", "Ancient crystal world"));
+        realms.add(new Realm("Naboo", "Political capital planet"));
+        realms.add(new Realm("Prush", "Frozen frontier colony"));
+    }
+
+    public List<User> getUsers()
+    {
+        return users;
+    }
+
+    public void addUser(User user)
+    {
+        users.add(user);
+    }
+
+    public List<Realm> getRealms()
+    {
+        return realms;
+    }
+
+    public WorldClockTime getCurrentTime()
+    {
+        return currentTime;
+    }
+
+    public void advanceTimeMinutes(int minutes)
+    {
+        if (minutes >= 0)
+        {
+            currentTime = currentTime.plusMinutes(minutes);
+        }
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\GuildQuestFacade.java ====================
+package components;
+
+import java.util.List;
+
+public class GuildQuestFacade
+{
+    private GuildQuest system;
+    private User currentUser;
+
+    public GuildQuestFacade(GuildQuest system)
+    {
+        this.system = system;
+        this.currentUser = null;
+    }
+
+    public WorldClockTime getWorldTime()
+    {
+        return system.getCurrentTime();
+    }
+
+    public User getCurrentUser()
+    {
+        return currentUser;
+    }
+
+    public List<User> getUsers()
+    {
+        return system.getUsers();
+    }
+
+    public boolean createUser(String username)
+    {
+        if (username == null) return false;
+
+        username = username.trim();
+        if (username.length() == 0) return false;
+
+        User u = new User(username);
+        system.addUser(u);
+        currentUser = u;
+        return true;
+    }
+
+    public boolean switchUserByIndex(int indexZeroBased)
+    {
+        List<User> users = system.getUsers();
+
+        if (indexZeroBased < 0 || indexZeroBased >= users.size())
+        {
+            return false;
+        }
+
+        currentUser = users.get(indexZeroBased);
+        return true;
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\QuestEvent.java ====================
+package components;
+
+public class QuestEvent
+{
+    private String title;
+    private WorldClockTime startTime;
+    private WorldClockTime endTime; // optional (null ok)
+    private Realm realm;
+
+    public QuestEvent(String title, WorldClockTime startTime, WorldClockTime endTime, Realm realm)
+    {
+        this.title = title;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.realm = realm;
+    }
+
+    public String getTitle() { return title; }
+    public WorldClockTime getStartTime() { return startTime; }
+    public WorldClockTime getEndTime() { return endTime; }
+    public Realm getRealm() { return realm; }
+
+    public void setTitle(String title)
+    {
+        if (title != null && title.trim().length() > 0)
+        {
+            this.title = title.trim();
+        }
+    }
+
+    public void setEndTime(WorldClockTime endTime)
+    {
+        this.endTime = endTime;
+    }
+
+    @Override
+    public String toString()
+    {
+        String timePart = "Start: " + startTime;
+        if (endTime != null)
+        {
+            timePart = timePart + ", End: " + endTime;
+        }
+        return title + " @ " + realm.getName() + " (" + timePart + ")";
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\QuestLibrary.java ====================
+package components;
+
+public class QuestLibrary
+{
+    public static String[] getQuestTemplatesForClassAndRealm(String characterClass, String realmName)
+    {
+        String r = realmName.trim().toUpperCase();
+
+        if (characterClass.equals("Space Officer"))
+        {
+            if (r.equals("KATO"))  return new String[] { "Secure Kato Trade Route", "Raid Smuggler Depot in Kato" };
+            if (r.equals("MULT"))  return new String[] { "Enforce Curfew in Mult Sector 9", "Quell Riot in Mult Lower Levels" };
+            if (r.equals("KREON")) return new String[] { "Investigate Signal Beacon on Kreon", "Establish Outpost Perimeter on Kreon" };
+            if (r.equals("NABOO")) return new String[] { "Escort Envoy Through Naboo District", "Guard Senate Convoy in Naboo" };
+            return new String[] { "Patrol Prush Ice Corridor", "Defend Prush Supply Line" };
+        }
+        else if (characterClass.equals("Bounty Hunter"))
+        {
+            if (r.equals("KATO"))  return new String[] { "Track Rogue Officer in Kato", "Extract Prisoner from Kato Cells" };
+            if (r.equals("MULT"))  return new String[] { "Capture Mult Syndicate Leader", "Duel Rival Hunter on Mult Rooftops" };
+            if (r.equals("KREON")) return new String[] { "Recover Stolen Artifact on Kreon", "Follow Blood Trail Across Kreon" };
+            if (r.equals("NABOO")) return new String[] { "Eliminate Target in Naboo Shadows", "Intercept Bribe Exchange on Naboo" };
+            return new String[] { "Claim Wanted Pirate in Prush Orbit", "Track Smuggler Through Prush Wastes" };
+        }
+        else if (characterClass.equals("Galaxy Traveller"))
+        {
+            if (r.equals("KATO"))  return new String[] { "Negotiate Pact at Kato Bazaar", "Map Kato Canyon Passages" };
+            if (r.equals("MULT"))  return new String[] { "Establish Trade Route Through Mult", "Survey Mult Power Grid Anomaly" };
+            if (r.equals("KREON")) return new String[] { "Discover Ancient Ruins on Kreon", "Document Crystal Wildlife on Kreon" };
+            if (r.equals("NABOO")) return new String[] { "Escort Civilians to Naboo Capital", "Translate Naboo Star Archives" };
+            return new String[] { "Rescue Explorers from Prush Ice Storm", "Chart Unmapped Region Beyond Prush" };
+        }
+        else
+        {
+            if (r.equals("KATO"))  return new String[] { "Claim Desert Wyrm Skull from Kato", "Hunt Sand Stalker of Kato" };
+            if (r.equals("MULT"))  return new String[] { "Defeat Arena Champion of Mult", "Harvest Apex Predator Fang in Mult" };
+            if (r.equals("KREON")) return new String[] { "Collect Crystal Fang from Kreon Beast", "Track Glass Panther on Kreon" };
+            if (r.equals("NABOO")) return new String[] { "Capture Naboo Sky Serpent", "Acquire Royal Basilisk Scale on Naboo" };
+            return new String[] { "Slay Ice Leviathan of Prush", "Track Alpha Stalker in Prush Tundra" };
+        }
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\Realm.java ====================
+package components;
+
+public class Realm
+{
+    private String name;
+    private String description;
+
+    public Realm(String name, String description)
+    {
+        this.name = name;
+        this.description = description;
+    }
+
+    public String getName()
+    {
+        return name;
+    }
+
+    public String getDescription()
+    {
+        return description;
+    }
+
+    @Override
+    public String toString()
+    {
+        if (description == null || description.trim().length() == 0)
+        {
+            return name;
+        }
+        return name + " - " + description;
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\User.java ====================
+package components;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class User
+{
+    private String username;
+    private List<Character> characters;
+
+    public User(String username)
+    {
+        this.username = username;
+        this.characters = new ArrayList<Character>();
+    }
+
+    public String getUsername()
+    {
+        return username;
+    }
+
+    public void addCharacter(Character c)
+    {
+        characters.add(c);
+    }
+
+    public List<Character> getCharacters()
+    {
+        return characters;
+    }
+
+    @Override
+    public String toString()
+    {
+        return username;
+    }
+
+    public void printCharacters()
+    {
+        if (characters.size() == 0)
+        {
+            System.out.println("No characters for user " + username + ".");
+            return;
+        }
+
+        System.out.println("Characters for " + username + ":");
+
+        int i = 0;
+        while (i < characters.size())
+        {
+            System.out.println((i + 1) + ") " + characters.get(i));
+            i = i + 1;
+        }
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\components\WorldClockTime.java ====================
+package components;
+
+public class WorldClockTime implements Comparable<WorldClockTime>
+{
+    private final int days;
+    private final int hours;
+    private final int minutes;
+
+    public WorldClockTime(int days, int hours, int minutes)
+    {
+        int d = days;
+        int h = hours;
+        int m = minutes;
+
+        if (d < 0) d = 0;
+        if (h < 0) h = 0;
+        if (m < 0) m = 0;
+
+        h = h + (m / 60);
+        m = m % 60;
+
+        d = d + (h / 24);
+        h = h % 24;
+
+        this.days = d;
+        this.hours = h;
+        this.minutes = m;
+    }
+
+    public int getDays() { return days; }
+    public int getHours() { return hours; }
+    public int getMinutes() { return minutes; }
+
+    public int toTotalMinutes()
+    {
+        return days * 24 * 60 + hours * 60 + minutes;
+    }
+
+    public WorldClockTime plusMinutes(int deltaMinutes)
+    {
+        int total = this.toTotalMinutes() + deltaMinutes;
+        if (total < 0) total = 0;
+
+        int d = total / (24 * 60);
+        int rem = total % (24 * 60);
+        int h = rem / 60;
+        int m = rem % 60;
+
+        return new WorldClockTime(d, h, m);
+    }
+
+    @Override
+    public int compareTo(WorldClockTime other)
+    {
+        return Integer.compare(this.toTotalMinutes(), other.toTotalMinutes());
+    }
+
+    @Override
+    public String toString()
+    {
+        String hh = (hours < 10 ? "0" : "") + hours;
+        String mm = (minutes < 10 ? "0" : "") + minutes;
+        return "Day " + days + " " + hh + ":" + mm;
+    }
+}
+
+==================== C:\Users\Sahir\inf122-A2\GuildQuest\src\ui\ConsoleUI.java ====================
+package ui;
+
+import java.util.List;
+import java.util.Scanner;
+
+import components.Campaign;
+import components.Character;
+import components.GuildQuest;
+import components.QuestEvent;
+import components.Realm;
+import components.User;
+import components.WorldClockTime;
+import components.GuildQuestFacade;
+
+public class ConsoleUI
+{
+    private Scanner scanner;
+
+    private GuildQuest system;
+    private User currentUser;
+    private Character currentCharacter;
+    private Campaign currentCampaign;
+    private GuildQuestFacade facade;
+
+    public ConsoleUI(GuildQuest system)
+    {
+        this.system = system;
+        this.scanner = new Scanner(System.in);
+
+        this.currentUser = null;
+        this.currentCharacter = null;
+        this.currentCampaign = null;
+        this.facade = new GuildQuestFacade(system);
+    }
+
+    public void run()
+    {
+        System.out.println("Welcome to GuildQuest!");
+
+        boolean running = true;
+        while (running)
+        {
+            System.out.println();
+            printHeader();
+            printMenu();
+
+            System.out.print("Choose an option: ");
+            String choice = scanner.nextLine().trim();
+
+            if (choice.equals("1"))
+            {
+                createUser();
+            }
+            else if (choice.equals("2"))
+            {
+                switchUser();
+            }
+            else if (choice.equals("3"))
+            {
+                if (requireCurrentUser())
+                {
+                    Character created = createCharacter();
+                    currentUser.addCharacter(created);
+
+                    currentCharacter = created;
+                    currentCampaign = null;
+
+                    System.out.println("Character created and selected: " + created);
+                }
+            }
+            else if (choice.equals("4"))
+            {
+                if (requireCurrentUser())
+                {
+                    currentUser.printCharacters();
+                }
+            }
+            else if (choice.equals("5"))
+            {
+                if (requireCurrentUser())
+                {
+                    switchCharacter();
+                }
+            }
+            else if (choice.equals("6"))
+            {
+                if (requireCurrentCharacter())
+                {
+                    createCampaign();
+                }
+            }
+            else if (choice.equals("7"))
+            {
+                if (requireCurrentCharacter())
+                {
+                    switchCampaign();
+                }
+            }
+            else if (choice.equals("8"))
+            {
+                if (requireCurrentCharacter())
+                {
+                    listCampaigns();
+                }
+            }
+            else if (choice.equals("9"))
+            {
+                if (requireCurrentCampaign())
+                {
+                    updateCampaign();
+                }
+            }
+            else if (choice.equals("10"))
+            {
+                if (requireCurrentCampaign())
+                {
+                    removeCampaign();
+                }
+            }
+            else if (choice.equals("11"))
+            {
+                if (requireCurrentCampaign())
+                {
+                    createQuestEvent();
+                }
+            }
+            else if (choice.equals("12"))
+            {
+                if (requireCurrentCampaign())
+                {
+                    listQuestEvents();
+                }
+            }
+            else if (choice.equals("13"))
+            {
+                if (requireCurrentCampaign())
+                {
+                    updateQuestEvent();
+                }
+            }
+            else if (choice.equals("14"))
+            {
+                if (requireCurrentCampaign())
+                {
+                    removeQuestEvent();
+                }
+            }
+            else if (choice.equals("15"))
+            {
+                advanceWorldTime();
+            }
+            else if (choice.equals("0"))
+            {
+                running = false;
+            }
+            else
+            {
+                System.out.println("Invalid option.");
+            }
+        }
+
+        System.out.println("Goodbye!");
+    }
+
+    private void printCurrentCampaignStatus()
+    {
+        if (currentCampaign == null)
+        {
+            System.out.println("Current campaign: (none)");
+        }
+        else
+        {
+            System.out.println("Current campaign: "
+                    + currentCampaign.getName()
+                    + " @ "
+                    + currentCampaign.getRealm().getName());
+        }
+    }
+
+    private void printHeader()
+    {
+        System.out.println("===== Main Menu =====");
+        System.out.println("World time: " + system.getCurrentTime());
+        System.out.println("Current user: " + (currentUser == null ? "(none)" : currentUser.getUsername()));
+        System.out.println("Current character: " + (currentCharacter == null ? "(none)" : currentCharacter.getName()));
+
+        printCurrentCampaignStatus();
+    }
+
+    private void printMenu()
+    {
+        System.out.println("1) Create user");
+        System.out.println("2) Switch user");
+        System.out.println("3) Create character");
+        System.out.println("4) List characters");
+        System.out.println("5) Switch character");
+        System.out.println("6) Create campaign (for current character)");
+        System.out.println("7) Switch campaign (for current character)");
+        System.out.println("8) List campaigns (for current character)");
+        System.out.println("9) Update campaign (rename/archive/visibility)");
+        System.out.println("10) Remove campaign");
+        System.out.println("11) Create quest event");
+        System.out.println("12) List quest events");
+        System.out.println("13) Update quest event");
+        System.out.println("14) Remove quest event");
+        System.out.println("15) Advance world time");
+        System.out.println("0) Exit");
+    }
+
+    private void createUser()
+    {
+        System.out.print("Enter a username: ");
+        String username = scanner.nextLine().trim();
+
+        if (!facade.createUser(username))
+        {
+            System.out.println("Username cannot be empty.");
+            return;
+        }
+
+        currentUser = facade.getCurrentUser();
+        currentCharacter = null;
+        currentCampaign = null;
+
+        System.out.println("User created and selected: " + currentUser.getUsername());
+    }
+
+    private void switchUser()
+    {
+        List<User> users = facade.getUsers();
+
+        if (users.size() == 0)
+        {
+            System.out.println("No users exist yet. Create one first.");
+            return;
+        }
+
+        System.out.println("Select a user:");
+        int i = 0;
+        while (i < users.size())
+        {
+            System.out.println((i + 1) + ") " + users.get(i).getUsername());
+            i = i + 1;
+        }
+
+        System.out.print("Enter number: ");
+        String input = scanner.nextLine().trim();
+
+        int selected = parseIndex(input) - 1;
+        if (!facade.switchUserByIndex(selected))
+        {
+            System.out.println("Invalid selection.");
+            return;
+        }
+
+        currentUser = facade.getCurrentUser();
+        currentCharacter = null;
+        currentCampaign = null;
+
+        System.out.println("Switched to user: " + currentUser.getUsername());
+    }
+
+    private void switchCharacter()
+    {
+        List<Character> chars = currentUser.getCharacters();
+
+        if (chars.size() == 0)
+        {
+            System.out.println("No characters exist for this user yet. Create one first.");
+            currentCharacter = null;
+            currentCampaign = null;
+            return;
+        }
+
+        System.out.println("Select a character:");
+        int i = 0;
+        while (i < chars.size())
+        {
+            System.out.println((i + 1) + ") " + chars.get(i));
+            i = i + 1;
+        }
+
+        System.out.print("Enter number: ");
+        String input = scanner.nextLine().trim();
+
+        int selected = parseIndex(input) - 1;
+        if (selected < 0 || selected >= chars.size())
+        {
+            System.out.println("Invalid selection.");
+            return;
+        }
+
+        currentCharacter = chars.get(selected);
+        currentCampaign = null;
+
+        System.out.println("Switched to character: " + currentCharacter.getName());
+    }
+
+    private boolean requireCurrentUser()
+    {
+        if (currentUser == null)
+        {
+            System.out.println("No user selected. Create or switch to a user first.");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean requireCurrentCharacter()
+    {
+        if (!requireCurrentUser())
+        {
+            return false;
+        }
+
+        if (currentCharacter == null)
+        {
+            System.out.println("No character selected. Create or switch to a character first.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean requireCurrentCampaign()
+    {
+        if (!requireCurrentCharacter())
+        {
+            return false;
+        }
+
+        if (currentCampaign == null)
+        {
+            System.out.println("No campaign selected. Create or switch to a campaign first.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private int parseIndex(String s)
+    {
+        try
+        {
+            return Integer.parseInt(s);
+        }
+        catch (NumberFormatException e)
+        {
+            return -1;
+        }
+    }
+
+    private Character createCharacter()
+    {
+        System.out.print("Please select a name for your character: ");
+        String name = scanner.nextLine().trim();
+
+        String characterClass = chooseCharacterClass();
+        return new Character(name, characterClass);
+    }
+
+    private String chooseCharacterClass()
+    {
+        while (true)
+        {
+            System.out.println("Please select a class for your character:");
+            System.out.println("A: Space Officer");
+            System.out.println("B: Bounty Hunter");
+            System.out.println("C: Galaxy Traveller");
+            System.out.println("D: Trophy Collector");
+
+            String choice = scanner.nextLine().trim().toUpperCase();
+
+            if (choice.equals("A")) return "Space Officer";
+            if (choice.equals("B")) return "Bounty Hunter";
+            if (choice.equals("C")) return "Galaxy Traveller";
+            if (choice.equals("D")) return "Trophy Collector";
+
+            System.out.println("Invalid option. Please choose A, B, C, or D.");
+            System.out.println();
+        }
+    }
+
+    private void createCampaign()
+    {
+        System.out.print("Enter campaign name: ");
+        String name = scanner.nextLine().trim();
+
+        if (name.length() == 0)
+        {
+            System.out.println("Campaign name cannot be empty.");
+            return;
+        }
+
+        Realm realm = chooseRealm();
+
+        Campaign c = new Campaign(name, realm);
+        currentCharacter.addCampaign(c);
+        currentCampaign = c;
+
+        System.out.println("Campaign created for " + currentCharacter.getName() + " and selected: " + c);
+    }
+
+    private void switchCampaign()
+    {
+        List<Campaign> campaigns = currentCharacter.getCampaigns();
+
+        if (campaigns.size() == 0)
+        {
+            System.out.println("No campaigns exist for this character yet. Create one first.");
+            currentCampaign = null;
+            return;
+        }
+
+        System.out.println("Select a campaign for " + currentCharacter.getName() + ":");
+        int i = 0;
+        while (i < campaigns.size())
+        {
+            System.out.println((i + 1) + ") " + campaigns.get(i));
+            i = i + 1;
+        }
+
+        System.out.print("Enter number: ");
+        String input = scanner.nextLine().trim();
+
+        int selected = parseIndex(input) - 1;
+        if (selected < 0 || selected >= campaigns.size())
+        {
+            System.out.println("Invalid selection.");
+            return;
+        }
+
+        currentCampaign = campaigns.get(selected);
+        System.out.println("Switched to campaign: " + currentCampaign);
+    }
+
+    private void listCampaigns()
+    {
+        List<Campaign> campaigns = currentCharacter.getCampaigns();
+
+        if (campaigns.size() == 0)
+        {
+            System.out.println("No campaigns for character " + currentCharacter.getName() + ".");
+            return;
+        }
+
+        System.out.println("Campaigns for " + currentCharacter.getName() + ":");
+        int i = 0;
+        while (i < campaigns.size())
+        {
+            System.out.println((i + 1) + ") " + campaigns.get(i));
+            i = i + 1;
+        }
+    }
+
+    private void updateCampaign()
+    {
+        System.out.println("Updating campaign: " + currentCampaign);
+        System.out.println("1) Rename");
+        System.out.println("2) Toggle archived (currently " + (currentCampaign.isArchived() ? "ARCHIVED" : "ACTIVE") + ")");
+        System.out.println("3) Toggle visibility (currently " + currentCampaign.getVisibilityText() + ")");
+        System.out.println("0) Cancel");
+
+        System.out.print("Choose: ");
+        String choice = scanner.nextLine().trim();
+
+        if (choice.equals("1"))
+        {
+            System.out.print("Enter new campaign name: ");
+            String newName = scanner.nextLine().trim();
+            currentCampaign.setName(newName);
+            System.out.println("Updated campaign: " + currentCampaign);
+        }
+        else if (choice.equals("2"))
+        {
+            currentCampaign.setArchived(!currentCampaign.isArchived());
+            System.out.println("Updated campaign: " + currentCampaign);
+        }
+        else if (choice.equals("3"))
+        {
+            currentCampaign.togglePublic();
+            System.out.println("Updated campaign: " + currentCampaign);
+        }
+        else
+        {
+            System.out.println("Cancelled.");
+        }
+    }
+
+    private void removeCampaign()
+    {
+        List<Campaign> campaigns = currentCharacter.getCampaigns();
+
+        int idx = -1;
+        int i = 0;
+        while (i < campaigns.size())
+        {
+            if (campaigns.get(i) == currentCampaign)
+            {
+                idx = i;
+            }
+            i = i + 1;
+        }
+
+        System.out.print("Are you sure you want to delete '" + currentCampaign.getName() + "'? (Y/N): ");
+        String yn = scanner.nextLine().trim().toUpperCase();
+
+        if (!yn.equals("Y"))
+        {
+            System.out.println("Cancelled.");
+            return;
+        }
+
+        if (idx >= 0)
+        {
+            campaigns.remove(idx);
+        }
+
+        System.out.println("Campaign removed.");
+        currentCampaign = null;
+    }
+
+    private void createQuestEvent()
+    {
+        String characterClass = currentCharacter.getCharacterClass();
+        String realmName = currentCampaign.getRealm().getName();
+
+        String[] templates = getQuestTemplatesForClassAndRealm(characterClass, realmName);
+
+        System.out.println("Select a quest for " + currentCharacter.getName()
+                + " (" + characterClass + ") in realm " + realmName + ":");
+
+        int i = 0;
+        while (i < templates.length)
+        {
+            System.out.println((i + 1) + ") " + templates[i]);
+            i = i + 1;
+        }
+
+        System.out.print("Enter number: ");
+        int questIndex = parseIndex(scanner.nextLine().trim()) - 1;
+
+        if (questIndex < 0 || questIndex >= templates.length)
+        {
+            System.out.println("Invalid selection. Quest creation cancelled.");
+            return;
+        }
+
+        String title = templates[questIndex];
+
+        WorldClockTime start = system.getCurrentTime();
+
+        System.out.print("Enter duration in minutes (0 for no end time): ");
+        int duration = parseIndex(scanner.nextLine().trim());
+        if (duration < 0) duration = 0;
+
+        WorldClockTime end = null;
+        if (duration > 0)
+        {
+            end = start.plusMinutes(duration);
+        }
+
+        Realm realm = currentCampaign.getRealm();
+
+        QuestEvent e = new QuestEvent(title, start, end, realm);
+        currentCampaign.addQuestEvent(e);
+
+        System.out.println("Quest event added to campaign '" + currentCampaign.getName() + "':");
+        System.out.println(e);
+    }
+
+    private void listQuestEvents()
+    {
+        List<QuestEvent> events = currentCampaign.getQuestEvents();
+
+        if (events.size() == 0)
+        {
+            System.out.println("No quest events in campaign '" + currentCampaign.getName() + "'.");
+            return;
+        }
+
+        System.out.println("Quest events in '" + currentCampaign.getName() + "':");
+        int i = 0;
+        while (i < events.size())
+        {
+            System.out.println((i + 1) + ") " + events.get(i));
+            i = i + 1;
+        }
+    }
+
+    private void updateQuestEvent()
+    {
+        List<QuestEvent> events = currentCampaign.getQuestEvents();
+
+        if (events.size() == 0)
+        {
+            System.out.println("No quest events to update.");
+            return;
+        }
+
+        listQuestEvents();
+        System.out.print("Enter event number to update: ");
+        int idx = parseIndex(scanner.nextLine().trim()) - 1;
+
+        if (idx < 0 || idx >= events.size())
+        {
+            System.out.println("Invalid selection.");
+            return;
+        }
+
+        QuestEvent e = events.get(idx);
+
+        System.out.println("Updating: " + e);
+        System.out.println("1) Change quest title (preset, class+realm)");
+        System.out.println("2) Change duration (updates end time)");
+        System.out.println("3) Clear end time");
+        System.out.println("0) Cancel");
+
+        System.out.print("Choose: ");
+        String choice = scanner.nextLine().trim();
+
+        if (choice.equals("1"))
+        {
+            String cls = currentCharacter.getCharacterClass();
+            String realmName = currentCampaign.getRealm().getName();
+            String[] templates = getQuestTemplatesForClassAndRealm(cls, realmName);
+
+            System.out.println("Select new quest title (" + cls + " in " + realmName + "):");
+            int i = 0;
+            while (i < templates.length)
+            {
+                System.out.println((i + 1) + ") " + templates[i]);
+                i = i + 1;
+            }
+
+            System.out.print("Enter number: ");
+            int q = parseIndex(scanner.nextLine().trim()) - 1;
+
+            if (q < 0 || q >= templates.length)
+            {
+                System.out.println("Invalid selection.");
+                return;
+            }
+
+            e.setTitle(templates[q]);
+            System.out.println("Updated event: " + e);
+        }
+        else if (choice.equals("2"))
+        {
+            System.out.print("Enter new duration in minutes (0 for no end time): ");
+            int duration = parseIndex(scanner.nextLine().trim());
+            if (duration < 0) duration = 0;
+
+            if (duration == 0)
+            {
+                e.setEndTime(null);
+            }
+            else
+            {
+                WorldClockTime end = e.getStartTime().plusMinutes(duration);
+                e.setEndTime(end);
+            }
+
+            System.out.println("Updated event: " + e);
+        }
+        else if (choice.equals("3"))
+        {
+            e.setEndTime(null);
+            System.out.println("Updated event: " + e);
+        }
+        else
+        {
+            System.out.println("Cancelled.");
+        }
+    }
+
+    private void removeQuestEvent()
+    {
+        List<QuestEvent> events = currentCampaign.getQuestEvents();
+
+        if (events.size() == 0)
+        {
+            System.out.println("No quest events to remove.");
+            return;
+        }
+
+        listQuestEvents();
+        System.out.print("Enter event number to remove: ");
+        int idx = parseIndex(scanner.nextLine().trim()) - 1;
+
+        if (idx < 0 || idx >= events.size())
+        {
+            System.out.println("Invalid selection.");
+            return;
+        }
+
+        System.out.print("Are you sure you want to delete this event? (Y/N): ");
+        String yn = scanner.nextLine().trim().toUpperCase();
+        if (!yn.equals("Y"))
+        {
+            System.out.println("Cancelled.");
+            return;
+        }
+
+        currentCampaign.removeQuestEvent(idx);
+        System.out.println("Quest event removed.");
+    }
+
+    private void advanceWorldTime()
+    {
+        System.out.println("Advance world time:");
+        System.out.println("1) Minutes");
+        System.out.println("2) Hours");
+        System.out.println("3) Days");
+        System.out.println("0) Cancel");
+
+        System.out.print("Choose: ");
+        String choice = scanner.nextLine().trim();
+
+        if (choice.equals("0"))
+        {
+            System.out.println("Cancelled.");
+            return;
+        }
+
+        System.out.print("Enter amount: ");
+        int amount = parseIndex(scanner.nextLine().trim());
+        if (amount < 0) amount = 0;
+
+        int minutesToAdd = 0;
+
+        if (choice.equals("1"))
+        {
+            minutesToAdd = amount;
+        }
+        else if (choice.equals("2"))
+        {
+            minutesToAdd = amount * 60;
+        }
+        else if (choice.equals("3"))
+        {
+            minutesToAdd = amount * 24 * 60;
+        }
+        else
+        {
+            System.out.println("Invalid option.");
+            return;
+        }
+
+        system.advanceTimeMinutes(minutesToAdd);
+        System.out.println("World time is now: " + system.getCurrentTime());
+    }
+
+    private Realm chooseRealm()
+    {
+        List<Realm> realms = system.getRealms();
+
+        System.out.println("Select a realm:");
+        int i = 0;
+        while (i < realms.size())
+        {
+            System.out.println((i + 1) + ") " + realms.get(i).getName());
+            i = i + 1;
+        }
+
+        System.out.print("Enter number: ");
+        int choice = parseIndex(scanner.nextLine().trim()) - 1;
+
+        if (choice < 0 || choice >= realms.size())
+        {
+            System.out.println("Invalid realm selection. Defaulting to first realm.");
+            return realms.get(0);
+        }
+
+        return realms.get(choice);
+    }
+
+    private String[] getQuestTemplatesForClassAndRealm(String characterClass, String realmName)
+    {
+        String r = realmName.trim().toUpperCase();
+
+        if (characterClass.equals("Space Officer"))
+        {
+            if (r.equals("KATO"))  return new String[] { "Secure Kato Trade Route", "Raid Smuggler Depot in Kato" };
+            if (r.equals("MULT"))  return new String[] { "Enforce Curfew in Mult Sector 9", "Quell Riot in Mult Lower Levels" };
+            if (r.equals("KREON")) return new String[] { "Investigate Signal Beacon on Kreon", "Establish Outpost Perimeter on Kreon" };
+            if (r.equals("NABOO")) return new String[] { "Escort Envoy Through Naboo District", "Guard Senate Convoy in Naboo" };
+            return new String[] { "Patrol Prush Ice Corridor", "Defend Prush Supply Line" };
+        }
+        else if (characterClass.equals("Bounty Hunter"))
+        {
+            if (r.equals("KATO"))  return new String[] { "Track Rogue Officer in Kato", "Extract Prisoner from Kato Cells" };
+            if (r.equals("MULT"))  return new String[] { "Capture Mult Syndicate Leader", "Duel Rival Hunter on Mult Rooftops" };
+            if (r.equals("KREON")) return new String[] { "Recover Stolen Artifact on Kreon", "Follow Blood Trail Across Kreon" };
+            if (r.equals("NABOO")) return new String[] { "Eliminate Target in Naboo Shadows", "Intercept Bribe Exchange on Naboo" };
+            return new String[] { "Claim Wanted Pirate in Prush Orbit", "Track Smuggler Through Prush Wastes" };
+        }
+        else if (characterClass.equals("Galaxy Traveller"))
+        {
+            if (r.equals("KATO"))  return new String[] { "Negotiate Pact at Kato Bazaar", "Map Kato Canyon Passages" };
+            if (r.equals("MULT"))  return new String[] { "Establish Trade Route Through Mult", "Survey Mult Power Grid Anomaly" };
+            if (r.equals("KREON")) return new String[] { "Discover Ancient Ruins on Kreon", "Document Crystal Wildlife on Kreon" };
+            if (r.equals("NABOO")) return new String[] { "Escort Civilians to Naboo Capital", "Translate Naboo Star Archives" };
+            return new String[] { "Rescue Explorers from Prush Ice Storm", "Chart Unmapped Region Beyond Prush" };
+        }
+        else
+        {
+            if (r.equals("KATO"))  return new String[] { "Claim Desert Wyrm Skull from Kato", "Hunt Sand Stalker of Kato" };
+            if (r.equals("MULT"))  return new String[] { "Defeat Arena Champion of Mult", "Harvest Apex Predator Fang in Mult" };
+            if (r.equals("KREON")) return new String[] { "Collect Crystal Fang from Kreon Beast", "Track Glass Panther on Kreon" };
+            if (r.equals("NABOO")) return new String[] { "Capture Naboo Sky Serpent", "Acquire Royal Basilisk Scale on Naboo" };
+            return new String[] { "Slay Ice Leviathan of Prush", "Track Alpha Stalker in Prush Tundra" };
+        }
+    }
+}
+
