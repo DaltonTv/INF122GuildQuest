@@ -1,0 +1,1509 @@
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\controller\GuildQuestManager.java ===================
+package com.guildquest.controller;
+
+import com.guildquest.model.*;
+import com.guildquest.view.DayView;
+import java.util.ArrayList;
+import java.util.List;
+import com.guildquest.factory.*;
+
+public class GuildQuestManager {
+
+    //************* Important Assignment 3 changes ************//
+    //***** CHANGED - Singleton: private static instance variable ****//
+    private static GuildQuestManager instance;
+
+    private List<User> users;
+    private List<Realm> realms;
+    private List<CampaignShare> shares;
+    private WorldClock worldClock;
+    private DayView dayView;
+
+
+    //************* Important Assignment 3 changes ************//
+    // ******** CHANGED - Singleton: constructor made private ****//
+    private GuildQuestManager() {
+        this.users = new ArrayList<>();
+        this.realms = new ArrayList<>();
+        this.shares = new ArrayList<>();
+        this.worldClock = WorldClock.getInstance();
+        this.dayView = new DayView();
+    }
+
+    //************* Important Assignment 3 changes ************//
+    // ******* CHANGED - Singleton: global access point *******//
+    public static GuildQuestManager getInstance() {
+        if (instance == null) {
+            instance = new GuildQuestManager();
+        }
+        return instance;
+    }
+
+    // End Factory Method.
+
+    public User createUser(String userId, String name) {
+        User user = new User(userId, name);
+        users.add(user);
+        return user;
+    }
+
+    //************* Important Assignment 3 changes ************//
+    // CHANGED - Factory Method: use factory instead of direct instantiation
+    private RealmFactory realmFactory = new StandardRealmFactory();
+
+    public Realm createRealm(String realmId, String name,
+                             String description, int offsetMinutes) {
+        Realm realm = realmFactory.createRealm(realmId, name, description, offsetMinutes);
+        realms.add(realm);
+        return realm;
+    }
+    // end Factory Method
+
+
+    public void shareCampaign(Campaign campaign, User sharedWith, PermissionLevel permission) {
+        CampaignShare share = new CampaignShare(sharedWith, campaign, permission);
+        shares.add(share);
+    }
+
+    public List<Campaign> getSharedCampaigns(User user) {
+        List<Campaign> sharedCampaigns = new ArrayList<>();
+        for (CampaignShare share : shares) {
+            if (share.getSharedWith().equals(user)) {
+                sharedCampaigns.add(share.getCampaign());
+            }
+        }
+        return sharedCampaigns;
+    }
+
+    public List<QuestEvent> getDayEvents(Campaign campaign, WorldTime startTime) {
+        return dayView.getEvents(campaign, startTime);
+    }
+
+    public List<User> getUsers() {
+        return users;
+    }
+
+    public List<Realm> getRealms() {
+        return realms;
+    }
+
+    public WorldClock getWorldClock() {
+        return worldClock;
+    }
+
+    public User findUser(String userId) {
+        for (User user : users) {
+            if (user.getUserId().equals(userId)) {
+                return user;
+            }
+        }
+        return null;
+    }
+
+    public Realm findRealm(String realmId) {
+        for (Realm realm : realms) {
+            if (realm.getRealmId().equals(realmId)) {
+                return realm;
+            }
+        }
+        return null;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\factory\RealmFactory.java ===================
+package com.guildquest.factory;
+
+import com.guildquest.model.Realm;
+
+// CHANGED - Factory Method: abstract creator class
+public abstract class RealmFactory {
+    public abstract Realm createRealm(String realmId, String name,
+                                      String description, int offsetMinutes);
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\factory\StandardRealmFactory.java ===================
+package com.guildquest.factory;
+
+import com.guildquest.model.*;
+// *************** IMPORTANT ASSIGNEMENT 3 ************* //
+// CHANGED - Factory Method: concrete creator subclass
+public class StandardRealmFactory extends RealmFactory {
+    @Override
+    public Realm createRealm(String realmId, String name,
+                             String description, int offsetMinutes) {
+        LocalTimeRule rule = new FixedOffsetRule(offsetMinutes);
+        return new Realm(realmId, name, description, rule);
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\GuildQuestApp.java ===================
+package com.guildquest;
+
+import com.guildquest.controller.GuildQuestManager;
+import com.guildquest.model.*;
+import java.util.List;
+import java.util.Scanner;
+
+public class GuildQuestApp {
+    private static GuildQuestManager manager;
+    private static Scanner scanner;
+    private static User currentUser;
+
+    public static void main(String[] args) {
+
+
+        //************* Important Assignment 3 changes ************//
+        // CHANGED - Singleton: use getInstance() instead of constructor
+        manager = GuildQuestManager.getInstance();
+        scanner = new Scanner(System.in);
+
+        //************* Important Assignment 3 changes ************//
+        // CHANGED - Extract Method: extracted into own method
+        displayWelcomeBanner();
+
+
+
+        initializeSampleData();
+
+        selectUser();
+
+        boolean running = true;
+        while (running) {
+            displayMainMenu();
+            int choice = getIntInput();
+
+            switch (choice) {
+                case 1: manageUsers(); break;
+                case 2: manageCampaigns(); break;
+                case 3: manageQuestEvents(); break;
+                case 4: manageRealms(); break;
+                case 5: manageCharacters(); break;
+                case 6: manageInventory(); break;
+                case 7: shareCampaign(); break;
+                case 8: viewSharedCampaigns(); break;
+                case 9: toggleCampaignVisibility(); break;
+                case 10: viewTimeline(); break;
+                case 11: viewEventTimes(); break;
+
+                case 12: advanceWorldClock(); break;
+                case 13: showCurrentWorldTime(); break;
+
+                //*************IMPORTANT ASSIGNMENT 3 (GEN AI)*********//
+                // CHANGED - Observer: subscribe current user to a campaign
+                case 14:
+                    // CHANGED - Observer: subscribe current user to a campaign
+                    Campaign campToWatch = selectCampaign();
+                    if (campToWatch != null) {
+                        campToWatch.addObserver(currentUser);
+                        System.out.println(currentUser.getName() +
+                                " is now watching: " + campToWatch.getName());
+                    }
+                    break;
+                case 0: running = false; System.out.println("\nThank you for using GuildQuest!\nGoodbye!"); break;
+                default: System.out.println("\n[Invalid option!]");
+            }
+        }
+
+        scanner.close();
+    }
+
+    //************* Important Assignment 3 changes ************//
+    // CHANGED - Extract Method: new extracted method
+    private static void displayWelcomeBanner() {
+        System.out.println("=================================");
+        System.out.println("   Welcome to GuildQuest");
+        System.out.println("   RPG Campaign Manager");
+        System.out.println("=================================");
+        System.out.println();
+    }
+
+    private static void initializeSampleData() {
+        Realm realm1 = manager.createRealm("R1", "Eldoria", "A mystical forest realm", 0);
+        Realm realm2 = manager.createRealm("R2", "Darkspire", "A volcanic mountain region", 180);
+
+        User user1 = manager.createUser("U1", "Gandalf");
+        User user2 = manager.createUser("U2", "Aragorn");
+
+        System.out.println("Sample data initialized: 2 users, 2 realms created.");
+    }
+
+    private static void selectUser() {
+        System.out.println("\n--- Select User ---");
+        List<User> users = manager.getUsers();
+        for (int i = 0; i < users.size(); i++) {
+            System.out.println((i + 1) + ". " + users.get(i).getName());
+        }
+        System.out.print("Select user: ");
+        int choice = getIntInput();
+        if (choice > 0 && choice <= users.size()) {
+            currentUser = users.get(choice - 1);
+            System.out.println("Logged in as: " + currentUser.getName());
+        } else {
+            currentUser = users.get(0);
+            System.out.println("Invalid choice. Logged in as: " + currentUser.getName());
+        }
+    }
+
+    private static void displayMainMenu() {
+        System.out.println("\n========== MAIN MENU ==========");
+        System.out.println("Current User: " + currentUser.getName());
+        System.out.println("1.  Manage Users");
+        System.out.println("2.  Manage Campaigns");
+        System.out.println("3.  Manage Quest Events");
+        System.out.println("4.  Manage Realms");
+        System.out.println("5.  Manage Characters");
+        System.out.println("6.  Manage Inventory");
+        System.out.println("7.  Share Campaign with User");
+        System.out.println("8.  View Shared Campaigns");
+        System.out.println("9.  Toggle Campaign Visibility");
+        System.out.println("10. View Timeline (Day View)");
+        System.out.println("11. View Event Times (World & Local)");
+        System.out.println("12. Advance World Clock");
+        System.out.println("13. Show Current World Time");
+        System.out.println("14. Subscribe to Campaign (Watch for new events)");
+        System.out.println("0.  Exit");
+        System.out.println("===============================");
+        System.out.print("Select option: ");
+    }
+
+    private static void manageUsers() {
+        System.out.println("\n--- Manage Users ---");
+        System.out.println("1. Create User");
+        System.out.println("2. List Users");
+        System.out.println("3. Switch User");
+        System.out.print("Select: ");
+        int choice = getIntInput();
+
+        switch (choice) {
+            case 1:
+                System.out.print("User ID: ");
+                String userId = scanner.nextLine();
+                System.out.print("Name: ");
+                String name = scanner.nextLine();
+                manager.createUser(userId, name);
+                System.out.println("User created!");
+                break;
+            case 2:
+                System.out.println("\n--- All Users ---");
+                for (User u : manager.getUsers()) {
+                    System.out.println("- " + u.getName() + " (ID: " + u.getUserId() + ")");
+                }
+                break;
+            case 3:
+                selectUser();
+                break;
+        }
+    }
+
+    private static void manageCampaigns() {
+        System.out.println("\n--- Manage Campaigns ---");
+        System.out.println("1. Create Campaign");
+        System.out.println("2. List My Campaigns");
+        System.out.println("3. Rename Campaign");
+        System.out.println("4. Archive Campaign");
+        System.out.print("Select: ");
+        int choice = getIntInput();
+
+        switch (choice) {
+            case 1:
+                System.out.print("Campaign ID: ");
+                String cId = scanner.nextLine();
+                System.out.print("Campaign Name: ");
+                String cName = scanner.nextLine();
+                currentUser.createCampaign(cId, cName);
+                System.out.println("Campaign created!");
+                break;
+            case 2:
+                System.out.println("\n--- My Campaigns ---");
+                for (Campaign c : currentUser.getCampaigns()) {
+                    System.out.println("- " + c.getName() + " [" + c.getVisibility() + "]" +
+                            (c.isArchived() ? " (Archived)" : ""));
+                }
+                break;
+            case 3:
+                Campaign c = selectCampaign();
+                if (c != null) {
+                    System.out.print("New name: ");
+                    String newName = scanner.nextLine();
+                    c.rename(newName);
+                    System.out.println("Campaign renamed!");
+                }
+                break;
+            case 4:
+                Campaign c2 = selectCampaign();
+                if (c2 != null) {
+                    c2.setArchived(true);
+                    System.out.println("Campaign archived!");
+                }
+                break;
+        }
+    }
+
+    private static void manageQuestEvents() {
+        System.out.println("\n--- Manage Quest Events ---");
+        Campaign campaign = selectCampaign();
+        if (campaign == null) return;
+
+        System.out.println("1. Add Quest Event");
+        System.out.println("2. List Quest Events");
+        System.out.println("3. Update Quest Event Times");
+        System.out.print("Select: ");
+        int choice = getIntInput();
+
+        switch (choice) {
+            case 1:
+                System.out.print("Event ID: ");
+                String eId = scanner.nextLine();
+                System.out.print("Title: ");
+                String title = scanner.nextLine();
+                System.out.print("Start Day: ");
+                int day = getIntInput();
+                System.out.print("Start Hour: ");
+                int hour = getIntInput();
+                System.out.print("Start Minute: ");
+                int minute = getIntInput();
+
+                Realm realm = selectRealm();
+                if (realm != null) {
+                    WorldTime startTime = new WorldTime(day, hour, minute);
+                    QuestEvent event = new QuestEvent(eId, title, startTime, realm);
+                    campaign.addEvent(event);
+                    System.out.println("Quest Event added!");
+                }
+                break;
+            case 2:
+                System.out.println("\n--- Quest Events ---");
+                for (QuestEvent e : campaign.getEvents()) {
+                    System.out.println("- " + e.getTitle() + " at " + e.getStartTime() +
+                            " in " + e.getOccursIn().getName());
+                }
+                break;
+            case 3:
+                QuestEvent event = selectQuestEvent(campaign);
+                if (event != null) {
+                    System.out.print("New Start Day: ");
+                    int d = getIntInput();
+                    System.out.print("New Start Hour: ");
+                    int h = getIntInput();
+                    System.out.print("New Start Minute: ");
+                    int m = getIntInput();
+                    WorldTime newStart = new WorldTime(d, h, m);
+                    event.updateTimes(newStart, null);
+                    System.out.println("Event updated!");
+                }
+                break;
+        }
+    }
+
+    private static void manageRealms() {
+        System.out.println("\n--- Manage Realms ---");
+        System.out.println("1. Create Realm");
+        System.out.println("2. List Realms");
+        System.out.print("Select: ");
+        int choice = getIntInput();
+
+        switch (choice) {
+            case 1:
+                System.out.print("Realm ID: ");
+                String rId = scanner.nextLine();
+                System.out.print("Name: ");
+                String name = scanner.nextLine();
+                System.out.print("Description: ");
+                String desc = scanner.nextLine();
+                System.out.print("Time Offset (minutes): ");
+                int offset = getIntInput();
+                manager.createRealm(rId, name, desc, offset);
+                System.out.println("Realm created!");
+                break;
+            case 2:
+                System.out.println("\n--- All Realms ---");
+                for (Realm r : manager.getRealms()) {
+                    System.out.println("- " + r.getName() + ": " + r.getDescription());
+                }
+                break;
+        }
+    }
+
+    private static void manageCharacters() {
+        System.out.println("\n--- Manage Characters ---");
+        System.out.println("1. Create Character");
+        System.out.println("2. List My Characters");
+        System.out.print("Select: ");
+        int choice = getIntInput();
+
+        switch (choice) {
+            case 1:
+                System.out.print("Character ID: ");
+                String cId = scanner.nextLine();
+                System.out.print("Name: ");
+                String name = scanner.nextLine();
+                System.out.print("Class: ");
+                String className = scanner.nextLine();
+                System.out.print("Level: ");
+                int level = getIntInput();
+                GameCharacter gameCharacter = new GameCharacter(cId, name, className, level);
+                currentUser.addCharacter(gameCharacter);
+                System.out.println("Character created!");
+                break;
+            case 2:
+                System.out.println("\n--- My Characters ---");
+                for (GameCharacter ch : currentUser.getCharacters()) {
+                    System.out.println("- " + ch.getName() + " (Level " + ch.getLevel() +
+                            " " + ch.getClassName() + ")");
+                }
+                break;
+        }
+    }
+
+    private static void manageInventory() {
+        System.out.println("\n--- Manage Inventory ---");
+        GameCharacter gameCharacter = selectCharacter();
+        if (gameCharacter == null) return;
+
+        System.out.println("1. Add Item");
+        System.out.println("2. Remove Item");
+        System.out.println("3. View Inventory");
+        System.out.print("Select: ");
+        int choice = getIntInput();
+
+        switch (choice) {
+            case 1:
+                System.out.print("Item ID: ");
+                String iId = scanner.nextLine();
+                System.out.print("Item Name: ");
+                String iName = scanner.nextLine();
+                System.out.print("Type: ");
+                String type = scanner.nextLine();
+                System.out.print("Rarity: ");
+                String rarity = scanner.nextLine();
+                System.out.print("Quantity: ");
+                int qty = getIntInput();
+                Item item = new Item(iId, iName, type, rarity);
+                gameCharacter.getInventory().addItem(item, qty);
+                System.out.println("Item added to inventory!");
+                break;
+            case 2:
+                System.out.print("Item ID to remove: ");
+                String removeId = scanner.nextLine();
+                System.out.print("Quantity: ");
+                int removeQty = getIntInput();
+                InventoryEntry entry = gameCharacter.getInventory().findEntry(removeId);
+                if (entry != null) {
+                    gameCharacter.getInventory().removeItem(entry.getItem(), removeQty);
+                    System.out.println("Item removed!");
+                } else {
+                    System.out.println("Item not found!");
+                }
+                break;
+            case 3:
+                System.out.println("\n--- " + gameCharacter.getName() + "'s Inventory ---");
+                for (InventoryEntry e : gameCharacter.getInventory().getEntries()) {
+                    System.out.println("- " + e.getItem().getName() + " x" + e.getQuantity() +
+                            " [" + e.getItem().getRarity() + "]");
+                }
+                break;
+        }
+    }
+
+    private static void shareCampaign() {
+        System.out.println("\n--- Share Campaign ---");
+        Campaign campaign = selectCampaign();
+        if (campaign == null) return;
+
+        System.out.println("Select user to share with:");
+        for (int i = 0; i < manager.getUsers().size(); i++) {
+            User u = manager.getUsers().get(i);
+            if (!u.equals(currentUser)) {
+                System.out.println((i + 1) + ". " + u.getName());
+            }
+        }
+        System.out.print("Select: ");
+        int choice = getIntInput();
+        User shareWith = manager.getUsers().get(choice - 1);
+
+        System.out.println("Permission: 1. VIEW_ONLY  2. COLLABORATIVE");
+        System.out.print("Select: ");
+        int permChoice = getIntInput();
+        PermissionLevel perm = permChoice == 1 ? PermissionLevel.VIEW_ONLY : PermissionLevel.COLLABORATIVE;
+
+        manager.shareCampaign(campaign, shareWith, perm);
+        System.out.println("Campaign shared!");
+    }
+
+    private static void viewSharedCampaigns() {
+        System.out.println("\n--- Campaigns Shared With Me ---");
+        List<Campaign> shared = manager.getSharedCampaigns(currentUser);
+        if (shared.isEmpty()) {
+            System.out.println("No campaigns shared with you.");
+        } else {
+            for (Campaign c : shared) {
+                System.out.println("- " + c.getName() + " (by " + c.getOwner().getName() + ")");
+            }
+        }
+    }
+
+    private static void toggleCampaignVisibility() {
+        Campaign campaign = selectCampaign();
+        if (campaign != null) {
+            Visibility current = campaign.getVisibility();
+            campaign.setVisibility(current == Visibility.PUBLIC ? Visibility.PRIVATE : Visibility.PUBLIC);
+            System.out.println("Campaign visibility changed to: " + campaign.getVisibility());
+        }
+    }
+
+    private static void viewTimeline() {
+        Campaign campaign = selectCampaign();
+        if (campaign == null) return;
+
+        System.out.print("Enter day to view: ");
+        int day = getIntInput();
+        WorldTime startTime = new WorldTime(day, 0, 0);
+
+        List<QuestEvent> events = manager.getDayEvents(campaign, startTime);
+        System.out.println("\n--- Events on Day " + day + " ---");
+        if (events.isEmpty()) {
+            System.out.println("No events on this day.");
+        } else {
+            for (QuestEvent e : events) {
+                System.out.println("- " + e.getTitle() + " at " + e.getStartTime());
+            }
+        }
+    }
+
+    private static void viewEventTimes() {
+        Campaign campaign = selectCampaign();
+        if (campaign == null) return;
+
+        QuestEvent event = selectQuestEvent(campaign);
+        if (event == null) return;
+
+         //*********IMPORTANT ASSIGNMENT 3 ********************//
+        // CHANGED - Move Method: now using QuestEvent's own getLocalTime()
+        System.out.println("\n--- Event: " + event.getTitle() + " ---");
+        System.out.println("World Time: " + event.getStartTime());
+        System.out.println("Local Time (" + event.getOccursIn().getName() + "): " + event.getLocalTime());
+    }
+
+    private static void advanceWorldClock() {
+        System.out.print("Advance by how many days? ");
+        int days = getIntInput();
+        System.out.print("Advance by how many minutes? ");
+        int minutes = getIntInput();
+
+        int totalMinutes = (days * 24 * 60) + minutes;
+        manager.getWorldClock().advance(totalMinutes);
+
+        System.out.println("World Clock advanced by " + days + " day(s) and " + minutes + " minute(s).");
+        System.out.println("Current time: " + manager.getWorldClock().now());
+    }
+
+    private static void showCurrentWorldTime() {
+        System.out.println("\nCurrent World Time: " + manager.getWorldClock().now());
+    }
+
+    private static Campaign selectCampaign() {
+        if (currentUser.getCampaigns().isEmpty()) {
+            System.out.println("No campaigns available. Create one first!");
+            return null;
+        }
+        System.out.println("Select campaign:");
+        List<Campaign> campaigns = currentUser.getCampaigns();
+        for (int i = 0; i < campaigns.size(); i++) {
+            System.out.println((i + 1) + ". " + campaigns.get(i).getName());
+        }
+        System.out.print("Select: ");
+        int choice = getIntInput();
+        if (choice > 0 && choice <= campaigns.size()) {
+            return campaigns.get(choice - 1);
+        }
+        return null;
+    }
+
+    private static Realm selectRealm() {
+        List<Realm> realms = manager.getRealms();
+        if (realms.isEmpty()) {
+            System.out.println("No realms available!");
+            return null;
+        }
+        System.out.println("Select realm:");
+        for (int i = 0; i < realms.size(); i++) {
+            System.out.println((i + 1) + ". " + realms.get(i).getName());
+        }
+        System.out.print("Select: ");
+        int choice = getIntInput();
+        if (choice > 0 && choice <= realms.size()) {
+            return realms.get(choice - 1);
+        }
+        return null;
+    }
+
+    private static GameCharacter selectCharacter() {
+        if (currentUser.getCharacters().isEmpty()) {
+            System.out.println("No characters available. Create one first!");
+            return null;
+        }
+        System.out.println("Select character:");
+        List<GameCharacter> characters = currentUser.getCharacters();
+        for (int i = 0; i < characters.size(); i++) {
+            System.out.println((i + 1) + ". " + characters.get(i).getName());
+        }
+        System.out.print("Select: ");
+        int choice = getIntInput();
+        if (choice > 0 && choice <= characters.size()) {
+            return characters.get(choice - 1);
+        }
+        return null;
+    }
+
+    private static QuestEvent selectQuestEvent(Campaign campaign) {
+        if (campaign.getEvents().isEmpty()) {
+            System.out.println("No quest events in this campaign!");
+            return null;
+        }
+        System.out.println("Select quest event:");
+        List<QuestEvent> events = campaign.getEvents();
+        for (int i = 0; i < events.size(); i++) {
+            System.out.println((i + 1) + ". " + events.get(i).getTitle());
+        }
+        System.out.print("Select: ");
+        int choice = getIntInput();
+        if (choice > 0 && choice <= events.size()) {
+            return events.get(choice - 1);
+        }
+        return null;
+    }
+
+    private static int getIntInput() {
+        while (!scanner.hasNextInt()) {
+            scanner.next();
+            System.out.print("Invalid input. Enter a number: ");
+        }
+        int num = scanner.nextInt();
+        scanner.nextLine();
+        return num;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\Campaign.java ===================
+package com.guildquest.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Campaign {
+    private String campaignId;
+    private String name;
+    private Visibility visibility;
+    private boolean archived;
+    private User owner;
+    private List<QuestEvent> events;
+
+    // CHANGED - Observer: list of observers
+    private List<Observer> observers = new ArrayList<>();
+
+    public Campaign(String campaignId, String name, User owner) {
+        this.campaignId = campaignId;
+        this.name = name;
+        this.owner = owner;
+        this.visibility = Visibility.PRIVATE;
+        this.archived = false;
+        this.events = new ArrayList<>();
+    }
+
+    // CHANGED - Observer: add observer
+    public void addObserver(Observer observer) {
+        observers.add(observer);
+    }
+
+    // CHANGED - Observer: remove observer
+    public void removeObserver(Observer observer) {
+        observers.remove(observer);
+    }
+
+    // CHANGED - Observer: notify all observers
+    private void notifyObservers(String eventTitle) {
+        for (Observer o : observers) {
+            o.update(this.name, eventTitle);
+        }
+    }
+
+    // CHANGED - Observer: notify when event added
+    public void addEvent(QuestEvent event) {
+        events.add(event);
+        notifyObservers(event.getTitle());
+    }
+
+    public void removeEvent(QuestEvent event) {
+        events.remove(event);
+    }
+
+    public void rename(String newName) {
+        this.name = newName;
+    }
+
+    public String getCampaignId() {
+        return campaignId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Visibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(Visibility visibility) {
+        this.visibility = visibility;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public List<QuestEvent> getEvents() {
+        return events;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\CampaignShare.java ===================
+package com.guildquest.model;
+
+public class CampaignShare {
+    private User sharedWith;
+    private Campaign campaign;
+    private PermissionLevel permission;
+
+    public CampaignShare(User sharedWith, Campaign campaign, PermissionLevel permission) {
+        this.sharedWith = sharedWith;
+        this.campaign = campaign;
+        this.permission = permission;
+    }
+
+    public User getSharedWith() {
+        return sharedWith;
+    }
+
+    public Campaign getCampaign() {
+        return campaign;
+    }
+
+    public PermissionLevel getPermission() {
+        return permission;
+    }
+
+    public void setPermission(PermissionLevel permission) {
+        this.permission = permission;
+    }
+
+    public boolean canEdit() {
+        return permission == PermissionLevel.COLLABORATIVE;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\FixedOffsetRule.java ===================
+package com.guildquest.model;
+
+public class FixedOffsetRule implements LocalTimeRule {
+    private int offsetMinutes;
+
+    public FixedOffsetRule(int offsetMinutes) {
+        this.offsetMinutes = offsetMinutes;
+    }
+
+    @Override
+    public LocalTime toLocal(WorldTime worldTime) {
+        int totalMinutes = worldTime.toTotalMinutes() + offsetMinutes;
+
+        int days = totalMinutes / (24 * 60);
+        int remainingMinutes = totalMinutes % (24 * 60);
+        int hours = remainingMinutes / 60;
+        int minutes = remainingMinutes % 60;
+
+        if (hours < 0) {
+            hours += 24;
+            days -= 1;
+        }
+        if (minutes < 0) {
+            minutes += 60;
+            hours -= 1;
+        }
+
+        return new LocalTime(days, hours, minutes);
+    }
+
+    public int getOffsetMinutes() {
+        return offsetMinutes;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\GameCharacter.java ===================
+package com.guildquest.model;
+
+public class GameCharacter {
+    private String characterId;
+    private String name;
+    private String className;
+    private int level;
+    private Inventory inventory;
+
+    public GameCharacter(String characterId, String name, String className, int level) {
+        this.characterId = characterId;
+        this.name = name;
+        this.className = className;
+        this.level = level;
+        this.inventory = new Inventory();
+    }
+
+    public String getCharacterId() {
+        return characterId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
+    }
+
+    public int getLevel() {
+        return level;
+    }
+
+    public void setLevel(int level) {
+        this.level = level;
+    }
+
+    public Inventory getInventory() {
+        return inventory;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\Inventory.java ===================
+package com.guildquest.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Inventory {
+    private List<InventoryEntry> entries;
+
+    public Inventory() {
+        this.entries = new ArrayList<>();
+    }
+
+    public void addItem(Item item, int quantity) {
+        for (InventoryEntry entry : entries) {
+            if (entry.getItem().getItemId().equals(item.getItemId())) {
+                entry.addQuantity(quantity);
+                return;
+            }
+        }
+        entries.add(new InventoryEntry(item, quantity));
+    }
+
+    public void removeItem(Item item, int quantity) {
+        for (InventoryEntry entry : entries) {
+            if (entry.getItem().getItemId().equals(item.getItemId())) {
+                entry.removeQuantity(quantity);
+                if (entry.getQuantity() <= 0) {
+                    entries.remove(entry);
+                }
+                return;
+            }
+        }
+    }
+
+    public List<InventoryEntry> getEntries() {
+        return entries;
+    }
+
+    public InventoryEntry findEntry(String itemId) {
+        for (InventoryEntry entry : entries) {
+            if (entry.getItem().getItemId().equals(itemId)) {
+                return entry;
+            }
+        }
+        return null;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\InventoryChange.java ===================
+package com.guildquest.model;
+
+public class InventoryChange {
+    private GameCharacter gameCharacter;
+    private Item item;
+    private int quantityDelta;
+    private QuestEvent questEvent;
+
+    public InventoryChange(GameCharacter gameCharacter, Item item, int quantityDelta, QuestEvent questEvent) {
+        this.gameCharacter = gameCharacter;
+        this.item = item;
+        this.quantityDelta = quantityDelta;
+        this.questEvent = questEvent;
+    }
+
+    public void apply() {
+        if (quantityDelta > 0) {
+            gameCharacter.getInventory().addItem(item, quantityDelta);
+        } else if (quantityDelta < 0) {
+            gameCharacter.getInventory().removeItem(item, Math.abs(quantityDelta));
+        }
+    }
+
+    public GameCharacter getCharacter() {
+        return gameCharacter;
+    }
+
+    public Item getItem() {
+        return item;
+    }
+
+    public int getQuantityDelta() {
+        return quantityDelta;
+    }
+
+    public QuestEvent getQuestEvent() {
+        return questEvent;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\InventoryEntry.java ===================
+package com.guildquest.model;
+
+public class InventoryEntry {
+    private Item item;
+    private int quantity;
+
+    public InventoryEntry(Item item, int quantity) {
+        this.item = item;
+        this.quantity = quantity;
+    }
+
+    public Item getItem() {
+        return item;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public void addQuantity(int amount) {
+        this.quantity += amount;
+    }
+
+    public void removeQuantity(int amount) {
+        this.quantity -= amount;
+        if (this.quantity < 0) {
+            this.quantity = 0;
+        }
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\Item.java ===================
+package com.guildquest.model;
+
+public class Item {
+    private String itemId;
+    private String name;
+    private String type;
+    private String rarity;
+
+    public Item(String itemId, String name, String type, String rarity) {
+        this.itemId = itemId;
+        this.name = name;
+        this.type = type;
+        this.rarity = rarity;
+    }
+
+    public String getItemId() {
+        return itemId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getRarity() {
+        return rarity;
+    }
+
+    public void setRarity(String rarity) {
+        this.rarity = rarity;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\LocalTime.java ===================
+package com.guildquest.model;
+
+public class LocalTime {
+    private int day;
+    private int hour;
+    private int minute;
+
+    public LocalTime(int day, int hour, int minute) {
+        this.day = day;
+        this.hour = hour;
+        this.minute = minute;
+    }
+
+    public int getDay() {
+        return day;
+    }
+
+    public int getHour() {
+        return hour;
+    }
+
+    public int getMinute() {
+        return minute;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Day %d, %02d:%02d (Local)", day, hour, minute);
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\LocalTimeRule.java ===================
+package com.guildquest.model;
+
+public interface LocalTimeRule {
+    LocalTime toLocal(WorldTime worldTime);
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\Observer.java ===================
+package com.guildquest.model;
+
+
+//************* Important Assignment 3 changes(USING GEN AI) ************//
+// CHANGED - Observer: observer interface
+public interface Observer {
+    void update(String campaignName, String eventTitle);
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\PermissionLevel.java ===================
+package com.guildquest.model;
+
+public enum PermissionLevel {
+    VIEW_ONLY,
+    COLLABORATIVE
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\QuestEvent.java ===================
+package com.guildquest.model;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class QuestEvent {
+    private String eventId;
+    private String title;
+    private WorldTime startTime;
+    private WorldTime endTime;
+    private Realm occursIn;
+    private List<GameCharacter> participants;
+
+    public QuestEvent(String eventId, String title, WorldTime startTime, Realm occursIn) {
+        this.eventId = eventId;
+        this.title = title;
+        this.startTime = startTime;
+        this.occursIn = occursIn;
+        this.participants = new ArrayList<>();
+    }
+
+    public void updateTimes(WorldTime newStartTime, WorldTime newEndTime) {
+        this.startTime = newStartTime;
+        this.endTime = newEndTime;
+    }
+
+    public void updateRealm(Realm newRealm) {
+        this.occursIn = newRealm;
+    }
+
+    public void addParticipant(GameCharacter gameCharacter) {
+        participants.add(gameCharacter);
+    }
+
+    public void removeParticipant(GameCharacter gameCharacter) {
+        participants.remove(gameCharacter);
+    }
+
+    public String getEventId() {
+        return eventId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public WorldTime getStartTime() {
+        return startTime;
+    }
+
+    public WorldTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(WorldTime endTime) {
+        this.endTime = endTime;
+    }
+
+    public Realm getOccursIn() {
+        return occursIn;
+    }
+
+    public List<GameCharacter> getParticipants() {
+        return participants;
+    }
+
+    //******** IMPORTANT ASSIGNMENT 3 ************************************//
+    // CHANGED - Move Method: moved local time calculation into QuestEvent
+    public LocalTime getLocalTime() {
+        return occursIn.getLocalTime(startTime);
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\Realm.java ===================
+package com.guildquest.model;
+
+public class Realm {
+    private String realmId;
+    private String name;
+    private String description;
+    private LocalTimeRule localTimeRule;
+
+    public Realm(String realmId, String name, String description, LocalTimeRule localTimeRule) {
+        this.realmId = realmId;
+        this.name = name;
+        this.description = description;
+        this.localTimeRule = localTimeRule;
+    }
+
+    public String getRealmId() {
+        return realmId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public LocalTimeRule getLocalTimeRule() {
+        return localTimeRule;
+    }
+
+    public void setLocalTimeRule(LocalTimeRule localTimeRule) {
+        this.localTimeRule = localTimeRule;
+    }
+
+    public LocalTime getLocalTime(WorldTime worldTime) {
+        return localTimeRule.toLocal(worldTime);
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\User.java ===================
+package com.guildquest.model;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+// CHANGED - Observer: User now implements Observer
+public class User implements Observer {
+    private String userId;
+    private String name;
+    private List<Campaign> campaigns;
+    private List<GameCharacter> characters;
+
+    public User(String userId, String name) {
+        this.userId = userId;
+        this.name = name;
+        this.campaigns = new ArrayList<>();
+        this.characters = new ArrayList<>();
+    }
+
+    // CHANGED - Observer: notification method
+    @Override
+    public void update(String campaignName, String eventTitle) {
+        System.out.println("[Notification] " + name +
+                ": New event '" + eventTitle +
+                "' added to campaign '" + campaignName + "'");
+    }
+
+
+    public Campaign createCampaign(String campaignId, String campaignName) {
+        Campaign campaign = new Campaign(campaignId, campaignName, this);
+        campaigns.add(campaign);
+        return campaign;
+    }
+
+    public void addCharacter(GameCharacter gameCharacter) {
+        characters.add(gameCharacter);
+    }
+
+
+
+    public void removeCharacter(GameCharacter gameCharacter) {
+        characters.remove(gameCharacter);
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    // CHANGED - Encapsulate Collection: return unmodifiable list
+    public List<Campaign> getCampaigns() {
+        return Collections.unmodifiableList(campaigns);
+    }
+
+    // CHANGED - Encapsulate Collection: return unmodifiable list
+    public List<GameCharacter> getCharacters() {
+        return Collections.unmodifiableList(characters);
+    }
+
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\Visibility.java ===================
+package com.guildquest.model;
+
+public enum Visibility {
+    PUBLIC,
+    PRIVATE
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\WorldClock.java ===================
+package com.guildquest.model;
+
+public class WorldClock {
+    private static WorldClock instance;
+    private WorldTime currentTime;
+
+    private WorldClock() {
+        this.currentTime = new WorldTime(1, 0, 0);
+    }
+
+    public static WorldClock getInstance() {
+        if (instance == null) {
+            instance = new WorldClock();
+        }
+        return instance;
+    }
+
+    public WorldTime now() {
+        return currentTime;
+    }
+
+    public void advance(int minutes) {
+        currentTime = currentTime.plusMinutes(minutes);
+    }
+
+    public void setTime(WorldTime newTime) {
+        this.currentTime = newTime;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\model\WorldTime.java ===================
+package com.guildquest.model;
+
+
+public class WorldTime {
+    private int days;
+    private int hours;
+    private int minutes;
+
+
+    public WorldTime(int days, int hours, int minutes) {
+        this.days = days;
+        this.hours = hours;
+        this.minutes = minutes;
+        normalize(); // Ensure valid time (e.g., 25 hours becomes 1 day + 1 hour)
+    }
+
+
+    private void normalize() {
+        // Convert excess minutes to hours
+        if (minutes >= 60) {
+            hours += minutes / 60;
+            minutes = minutes % 60;
+        }
+        if (minutes < 0) {
+            hours -= 1;
+            minutes += 60;
+        }
+
+        // Convert excess hours to days
+        if (hours >= 24) {
+            days += hours / 24;
+            hours = hours % 24;
+        }
+        if (hours < 0) {
+            days -= 1;
+            hours += 24;
+        }
+    }
+
+
+    public WorldTime plusMinutes(int minutesToAdd) {
+        return new WorldTime(this.days, this.hours, this.minutes + minutesToAdd);
+    }
+
+
+    public int compareTo(WorldTime other) {
+        if (this.days != other.days) {
+            return this.days - other.days;
+        }
+        if (this.hours != other.hours) {
+            return this.hours - other.hours;
+        }
+        return this.minutes - other.minutes;
+    }
+
+    /**
+     * Check if this time is before another time
+     */
+    public boolean isBefore(WorldTime other) {
+        return compareTo(other) < 0;
+    }
+
+    /**
+     * Check if this time is after another time
+     */
+    public boolean isAfter(WorldTime other) {
+        return compareTo(other) > 0;
+    }
+
+    // Getters
+    public int getDays() {
+        return days;
+    }
+
+    public int getHours() {
+        return hours;
+    }
+
+    public int getMinutes() {
+        return minutes;
+    }
+
+    /**
+     * Convert to total minutes (useful for calculations)
+     */
+    public int toTotalMinutes() {
+        return (days * 24 * 60) + (hours * 60) + minutes;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Day %d, %02d:%02d", days, hours, minutes);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof WorldTime)) return false;
+        WorldTime other = (WorldTime) obj;
+        return this.days == other.days &&
+                this.hours == other.hours &&
+                this.minutes == other.minutes;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\view\DayView.java ===================
+package com.guildquest.view;
+
+import com.guildquest.model.Campaign;
+import com.guildquest.model.QuestEvent;
+import com.guildquest.model.WorldTime;
+import java.util.ArrayList;
+import java.util.List;
+
+public class DayView implements TimelineView {
+
+    @Override
+    public List<QuestEvent> getEvents(Campaign campaign, WorldTime startTime) {
+        List<QuestEvent> dayEvents = new ArrayList<>();
+
+        WorldTime endOfDay = startTime.plusMinutes(24 * 60);
+
+        for (QuestEvent event : campaign.getEvents()) {
+            WorldTime eventStart = event.getStartTime();
+
+            if (!eventStart.isBefore(startTime) && eventStart.isBefore(endOfDay)) {
+                dayEvents.add(event);
+            }
+        }
+
+        return dayEvents;
+    }
+}
+
+=================== C:\Users\4khun\IdeaProjects\GuildQuest\src\com\guildquest\view\TimelineView.java ===================
+package com.guildquest.view;
+
+import com.guildquest.model.Campaign;
+import com.guildquest.model.QuestEvent;
+import com.guildquest.model.WorldTime;
+import java.util.List;
+
+public interface TimelineView {
+    List<QuestEvent> getEvents(Campaign campaign, WorldTime startTime);
+}
+
