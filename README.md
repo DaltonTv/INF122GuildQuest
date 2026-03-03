@@ -12,10 +12,13 @@ Timothy Huy Tran
 INF122GuildQuest/
 ├──ContributorPrioCode/
 │   ├──Dalton/
-│   │   ├──DaltonGQCode.txt
+│   │   └──DaltonGQCode.txt
 │   ├──Partha/
+│   │   └──ParthaGQCode.txt
 │   ├──Sahir/
+│   │   └──SahirGQCode.txt
 │   └──Tim/
+│       └──TimGQCode.txt
 ├──ContributorProrUML/
 │   ├──Dalton/
 │   ├──Partha/
