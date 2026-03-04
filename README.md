@@ -17,8 +17,9 @@ INF122GuildQuest/
 │   │   └──ParthaGQCode.txt
 │   ├──Sahir/
 │   │   └──SahirGQCode.txt
-│   └──Tim/
-│       └──TimGQCode.txt
+│   ├──Tim/
+│   │   └──TimGQCode.txt
+│   └──combinedCode.txt
 ├──ContributorProrUML/
 │   ├──Dalton/
 │   ├──Partha/
