@@ -1,4 +1,4 @@
 package gmae.core.enums;
 
-public class PermissionLevel {
+public enum PermissionLevel {
 }
