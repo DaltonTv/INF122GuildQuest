@@ -18,7 +18,7 @@ public class PlayerInput {
         return action;
     }
 
-    public static PlayerInput fronString(int playerId, String raw){
+    public static PlayerInput fromString(int playerId, String raw){
         return switch(raw.trim().toUpperCase()){
             case "W" -> new PlayerInput(playerId, Action.MOVE_UP);
             case "S" -> new PlayerInput(playerId, Action.MOVE_DOWN);

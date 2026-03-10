@@ -1,7 +1,5 @@
 package gmae.core.entity;
 
-import jdk.jfr.EventSettings;
-
 import java.util.ArrayList;
 import java.util.UUID;
 

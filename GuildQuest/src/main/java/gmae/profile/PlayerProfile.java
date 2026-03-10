@@ -22,6 +22,7 @@ public class PlayerProfile {
         this.questHistory = new ArrayList<>();
         this.achievements = new ArrayList<>();
         this.totalWins = 0;
+        this.totalLosses = 0;
     }
 
     public void recordWin(String adventureName) {

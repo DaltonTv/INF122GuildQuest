@@ -65,15 +65,8 @@ public class Character {
         inventory.remove(item);
     }
     public void updatePosition(int x, int y) {
-        gridPosition.x += x;
-        gridPosition.y += y;
+        gridPosition.setX(gridPosition.getX() + x);
+        gridPosition.setY(gridPosition.getY() + y);
     }
 
-    private class GridPosition {
-        private int x;
-        private int y;
-        public GridPosition(int x, int y) {
-            this.x = x;
-        }
-    }
 }
