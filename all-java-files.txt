@@ -1,0 +1,808 @@
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\Relic.java ====================
+package gmae.adventures.relicHunt;
+
+public class Relic {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntAdventure.java ====================
+package gmae.adventures.relicHunt;
+
+public class RelicHuntAdventure {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntMap.java ====================
+package gmae.adventures.relicHunt;
+
+public class RelicHuntMap {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntState.java ====================
+package gmae.adventures.relicHunt;
+
+public class RelicHuntState {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\RaidObjective.java ====================
+package gmae.adventures.timedRaid;
+
+public class RaidObjective {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\RaidTimer.java ====================
+package gmae.adventures.timedRaid;
+
+public class RaidTimer {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\TimedRaidAdventure.java ====================
+package gmae.adventures.timedRaid;
+
+public class TimedRaidAdventure {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\TimedRaidState.java ====================
+package gmae.adventures.timedRaid;
+
+public class TimedRaidState {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\api\GameState.java ====================
+package gmae.api;
+
+public class GameState {
+    private final String boardDisplay;
+    private final int player1Score;
+    private final int player2Score;
+    private final int currentPlayerTurn;
+    private final String statusMessage;
+
+    public GameState(String boardDisplay, int p1Score,
+                     int currentPlayerTurn, int p2Score, String statusMessage) {
+        this.boardDisplay = boardDisplay;
+        this.player1Score = p1Score;
+        this.player2Score = p2Score;
+        this.currentPlayerTurn = currentPlayerTurn;
+        this.statusMessage = statusMessage;
+    }
+
+    public String getBoardDisplay() {
+        return boardDisplay;
+    }
+    public int getPlayer1Score() {
+        return player1Score;
+    }
+    public int getPlayer2Score() {
+        return player2Score;
+    }
+    public int getCurrentPlayerTurn() {
+        return currentPlayerTurn;
+    }
+    public String getStatusMessage() {
+        return statusMessage;
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\api\GuildQuestFacade.java ====================
+package gmae.api;
+
+public class GuildQuestFacade {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\api\MiniAdventure.java ====================
+package gmae.api;
+
+import gmae.profile.PlayerProfile;
+
+public interface MiniAdventure {
+    void initialize(PlayerProfile p1, PlayerProfile p2);
+    TurnResult advanceTurn(PlayerInput input);
+    GameState getState();
+    boolean isComplete();
+    String getWinner();
+    void reset();
+
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\api\PlayerInput.java ====================
+package gmae.api;
+
+public class PlayerInput {
+    public enum Action {MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, INTERACT, SKIP}
+
+    private final int playerId;
+    private final Action action;
+
+    public PlayerInput(int playerId, Action action){
+        this.playerId = playerId;
+        this.action = action;
+    }
+
+    public int getPlayerId() {
+        return playerId;
+    }
+    public Action getAction() {
+        return action;
+    }
+
+    public static PlayerInput fronString(int playerId, String raw){
+        return switch(raw.trim().toUpperCase()){
+            case "W" -> new PlayerInput(playerId, Action.MOVE_UP);
+            case "S" -> new PlayerInput(playerId, Action.MOVE_DOWN);
+            case "A" -> new PlayerInput(playerId, Action.MOVE_LEFT);
+            case "D" -> new PlayerInput(playerId, Action.MOVE_RIGHT);
+            case "E" -> new PlayerInput(playerId, Action.INTERACT);
+            default -> new PlayerInput(playerId, Action.SKIP);
+        };
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\api\TurnResult.java ====================
+package gmae.api;
+
+public class TurnResult {
+    private final String message;
+    private final GameState newState;
+    private final boolean gameOver;
+
+    public TurnResult(String message, GameState newState, boolean gameOver) {
+        this.message = message;
+        this.newState = newState;
+        this.gameOver = gameOver;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+    public GameState getNewState() {
+        return newState;
+    }
+    public boolean isGameOver() {
+        return gameOver;
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\builder\QuestEventBuilder.java ====================
+package gmae.builder;
+
+public class QuestEventBuilder {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\Campaign.java ====================
+package gmae.core.entity;
+
+import java.util.ArrayList;
+import java.util.UUID;
+
+public class Campaign {
+    private UUID campaignId;
+    private String name;
+    private boolean isPublic;
+    private boolean isArchived;
+    private User ownerUser;
+    private ArrayList<QuestEvent> questEvents;
+
+    public Campaign(String name, boolean isPublic, User owner, ArrayList<QuestEvent> events) {
+        this.campaignId = UUID.randomUUID();
+        this.name = name;
+        this.isPublic = isPublic;
+        this.ownerUser = owner;
+        this.questEvents = new ArrayList<>();
+        this.questEvents.addAll(events);
+    }
+
+    public UUID getCampaignId() {
+        return campaignId;
+    }
+    public String getName() {
+        return name;
+    }
+    public boolean isPublic() {
+        return isPublic;
+    }
+    public boolean isArchived() {
+        return isArchived;
+    }
+    public User getOwnerUser() {
+        return ownerUser;
+    }
+    public ArrayList<QuestEvent> getQuestEvents() {
+        return questEvents;
+    }
+
+    public void addQuestEvent(QuestEvent questEvent) {
+        this.questEvents.add(questEvent);
+    }
+    public void removeQuestEvent(QuestEvent questEvent) {
+        UUID id = questEvent.getEventId();
+        questEvents.removeIf(q -> q.getEventId().equals(id));
+    }
+
+    public void toggleVisibility() {
+        isPublic = !isPublic;
+    }
+    public void archiveCampaign() {
+        isArchived = true;
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\Character.java ====================
+package gmae.core.entity;
+
+import gmae.core.enums.CharacterClass;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+
+public class Character {
+    private UUID characterId;
+    private String name;
+    private CharacterClass characterClass;
+    private GridPosition gridPosition;
+    private int level;
+    private ArrayList<InventoryItem> inventory;
+
+    public Character(String name, CharacterClass characterClass,
+                     GridPosition gridPosition, ArrayList<InventoryItem> inventory)
+    {
+        this.characterId = UUID.randomUUID();
+        this.name = name;
+        this.characterClass = characterClass;
+        this.level = 1;
+        this.gridPosition = gridPosition;
+        this.inventory = new ArrayList<>();
+        for(InventoryItem item : inventory) {
+            this.inventory.add(item);
+        }
+    }
+
+    public UUID getCharacterId()
+    {
+        return characterId;
+    }
+    public String getName() {
+        return name;
+    }
+    public CharacterClass getCharacterClass()
+    {
+        return characterClass;
+    }
+    public GridPosition getGridPosition()
+    {
+        return gridPosition;
+    }
+    public int getLevel()
+    {
+        return level;
+    }
+    public List<InventoryItem> getInventory()
+    {
+        return inventory;
+    }
+
+    public void levelUp()
+    {
+        level++;
+    }
+    public void addItem(InventoryItem item)
+    {
+        inventory.add(item);
+    }
+    public void removeItem(InventoryItem item)
+    {
+        inventory.remove(item);
+    }
+    public void updatePosition(int x, int y) {
+        gridPosition.x += x;
+        gridPosition.y += y;
+    }
+
+    private class GridPosition {
+        private int x;
+        private int y;
+        public GridPosition(int x, int y) {
+            this.x = x;
+        }
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\InventoryItem.java ====================
+package gmae.core.entity;
+
+import gmae.core.enums.ItemType;
+import java.util.UUID;
+
+public class InventoryItem {
+    private UUID itemId;
+    private String name;
+    private String rarity;
+    private ItemType type;
+    private String description;
+
+    public InventoryItem(String name, String rarity, ItemType type, String description) {
+        this.itemId = UUID.randomUUID();
+        this.name = name;
+        this.rarity = rarity;
+        this.type = type;
+        this.description = description;
+    }
+
+    public UUID getItemId() {return itemId;}
+    public String getName() {return name;}
+    public String getRarity() {return rarity;}
+    public ItemType getType() {return type;}
+    public String getDescription() {return description;}
+
+    public void setName(String name) {this.name = name;}
+    public void setRarity(String rarity) {this.rarity = rarity;}
+    public void setType(ItemType type) {this.type = type;}
+    public void setDescription(String description) {this.description = description;}
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\QuestEvent.java ====================
+package gmae.core.entity;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.UUID;
+
+public class QuestEvent {
+    private UUID eventId;
+    private String name;
+    private Realm realm;
+    private ArrayList<Character> participatingCharacters;
+    private HashMap<Character, ArrayList<InventoryItem>> inventoryChanges;
+
+    public QuestEvent(String name, Realm realm, ArrayList<Character> participatingCharacters,
+                      HashMap<Character, ArrayList<InventoryItem>> inventoryChanges) {
+        this.eventId = UUID.randomUUID();
+        updateName(name);
+        updateRealm(realm);
+        this.participatingCharacters = new ArrayList<>();
+        for(Character c : participatingCharacters) {
+            addCharacter(c);
+        }
+        this.inventoryChanges = new HashMap<>();
+        this.inventoryChanges.putAll(inventoryChanges);
+    }
+
+    public UUID getEventId() {
+        return eventId;
+    }
+    public String getName() {
+        return name;
+    }
+    public Realm getRealm() {
+        return realm;
+    }
+    public ArrayList<Character> getParticipatingCharacters() {
+        return participatingCharacters;
+    }
+    public HashMap<Character, ArrayList<InventoryItem>> getInventoryChanges() {
+        return inventoryChanges;
+    }
+
+    public void updateName(String newName) {
+        name = newName;
+    }
+    public void updateRealm(Realm newRealm) {
+        realm = newRealm;
+    }
+    public void addCharacter(Character character) {
+        participatingCharacters.add(character);
+    }
+    public void removeCharacter(Character character) {
+        participatingCharacters.remove(character);
+    }
+
+
+    public void grantItem(Character character, InventoryItem item) {
+        int index = participatingCharacters.indexOf(character);
+        if(index >= 0) {
+            participatingCharacters.get(index).addItem(item);
+            if(inventoryChanges.containsKey(character)) {
+                inventoryChanges.get(character).add(item);
+            }
+            else  {
+                ArrayList<InventoryItem> items = new ArrayList<>();
+                items.add(item);
+                inventoryChanges.put(character, items);
+            }
+        }
+        else {
+            System.out.println("Character " + character.getName() + " doesn't exist");
+        }
+    }
+    public void removeItem(Character character, InventoryItem item) {
+        int index = participatingCharacters.indexOf(character);
+        if(index >= 0) {
+            participatingCharacters.get(index).removeItem(item);
+            if(inventoryChanges.containsKey(character)) {
+                inventoryChanges.get(character).remove(item);
+            }
+            else  {
+                ArrayList<InventoryItem> items = new ArrayList<>();
+                items.add(item);
+                inventoryChanges.put(character, items);
+            }
+        }
+        else {
+            System.out.println("Character " + character.getName() + " doesn't exist");
+        }
+    }
+
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\Realm.java ====================
+package gmae.core.entity;
+
+import java.util.UUID;
+
+public class Realm {
+    private UUID realmId;
+    private String name;
+    private String description;
+    private int timeOffset;
+    private int[][] realmGrid;
+
+    public Realm(String name, String descriptor, int timeOffset,
+                 int gridHeight, int gridWidth) {
+        this.realmId = UUID.randomUUID();
+        this.name = name;
+        this.description = descriptor;
+        this.timeOffset = timeOffset;
+        this.realmGrid = new int[gridHeight][gridWidth];
+    }
+
+    public UUID getRealmId() {
+        return realmId;
+    }
+    public String getName() {
+        return name;
+    }
+    public String getDescription() {
+        return description;
+    }
+    public int getTimeOffset() {
+        return timeOffset;
+    }
+    public int getGridHeight() {
+        return realmGrid.length;
+    }
+    public int getGridWidth() {
+        return realmGrid[0].length;
+    }
+    public int[][] getRealmGrid() {
+        return realmGrid;
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\User.java ====================
+package gmae.core.entity;
+
+import jdk.jfr.EventSettings;
+
+import java.util.ArrayList;
+import java.util.UUID;
+
+public class User {
+    private final UUID userId;
+    private String username;
+    private ArrayList<Campaign> ownedCampaigns;
+
+    public User(String username) {
+        this.userId = UUID.randomUUID();
+        this.username = username;
+        this.ownedCampaigns = new ArrayList<>();
+    }
+
+    public UUID getUserId() {
+        return userId;
+    }
+    public String getUsername() {
+        return username;
+    }
+    public ArrayList<Campaign> getOwnedCampaigns() {
+        return ownedCampaigns;
+    }
+
+    public void addCampaign(Campaign campaign) {
+        if(campaign != null && !ownedCampaigns.contains(campaign)) {
+            ownedCampaigns.add(campaign);
+        }
+    }
+    public void removeCampaign(Campaign campaign) {
+        if(ownedCampaigns.contains(campaign)) {
+            ownedCampaigns.remove(campaign);
+        }
+        else {
+            System.out.println("User: " + username + " does not own campaign: " + campaign.getName());
+        }
+    }
+    public boolean ownsCampaign(Campaign campaign) {
+        return ownedCampaigns.contains(campaign);
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\WorldTime.java ====================
+package gmae.core.entity;
+
+public class WorldTime {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\enums\CharacterClass.java ====================
+package gmae.core.enums;
+
+public enum CharacterClass {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\enums\ItemType.java ====================
+package gmae.core.enums;
+
+public enum ItemType {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\enums\PermissionLevel.java ====================
+package gmae.core.enums;
+
+public enum PermissionLevel {
+    ViewOnly,
+    Collaborative
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\enums\Theme.java ====================
+package gmae.core.enums;
+
+public enum Theme {
+    Classic,
+    Modern
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\BothTimeStrategy.java ====================
+package gmae.core.time;
+
+public class BothTimeStrategy {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\LocalOnlyStrategy.java ====================
+package gmae.core.time;
+
+public class LocalOnlyStrategy {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\TimeDisplayStrategy.java ====================
+package gmae.core.time;
+
+public class TimeDisplayStrategy {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\WorldClock.java ====================
+package gmae.core.time;
+
+public class WorldClock {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\WorldOnlyStrategy.java ====================
+package gmae.core.time;
+
+public class WorldOnlyStrategy {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\AdventureRegistry.java ====================
+package gmae.engine;
+
+public class AdventureRegistry {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\GuildQuestManager.java ====================
+package gmae.engine;
+
+public class GuildQuestManager {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\MiniAdventureFactory.java ====================
+package gmae.engine;
+
+public class MiniAdventureFactory {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\StandardAdventureFactory.java ====================
+package gmae.engine;
+
+public class StandardAdventureFactory {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\observer\GameObserver.java ====================
+package gmae.observer;
+
+public class GameObserver {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\observer\ProfileUpdateObserver.java ====================
+package gmae.observer;
+
+public class ProfileUpdateObserver {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\profile\AchievementRecord.java ====================
+package gmae.profile;
+
+public class AchievementRecord {
+    private final String name;
+    private final String unlockConditions;
+
+    public AchievementRecord(String name, String unlockConditions) {
+        this.name = name;
+        this.unlockConditions = unlockConditions;
+    }
+    public AchievementRecord(String name) {
+        this(name,"");
+    }
+
+    public String getName() {
+        return name;
+    }
+    public String getUnlockConditions() {
+        return unlockConditions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof AchievementRecord)) return false;
+        return name.equals(((AchievementRecord) o).name);
+    }
+    @Override
+    public int hashCode() {
+        return name.hashCode();
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\profile\PlayerProfile.java ====================
+package gmae.profile;
+
+import gmae.core.entity.InventoryItem;
+import gmae.core.enums.CharacterClass;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class PlayerProfile {
+    private String name;
+    private CharacterClass characterClass;
+    private List<InventoryItem> inventory;
+    private List<String> questHistory;
+    private List<AchievementRecord> achievements;
+    private int totalWins;
+    private int totalLosses;
+
+    public PlayerProfile(String characterName, CharacterClass characterClass) {
+        this.name = characterName;
+        this.characterClass = characterClass;
+        this.inventory = new ArrayList<>();
+        this.questHistory = new ArrayList<>();
+        this.achievements = new ArrayList<>();
+        this.totalWins = 0;
+    }
+
+    public void recordWin(String adventureName) {
+        this.totalWins++;
+        questHistory.add("Won: " + adventureName);
+    }
+    public void recordLoss(String adventureName) {
+        this.totalLosses++;
+        questHistory.add("Loss: " + adventureName);
+    }
+    public void addAchievement(AchievementRecord record) {
+        if (!achievements.contains(record)) {
+            achievements.add(record);
+        }
+    }
+
+    public String getCharacterName() {
+        return name;
+    }
+    public CharacterClass getCharacterClass() {
+        return characterClass;
+    }
+    public List<InventoryItem> getInventory() {
+        return inventory;
+    }
+    public List<String> getQuestHistory() {
+        return questHistory;
+    }
+    public List<AchievementRecord> getAchievements() {
+        return achievements;
+    }
+    public int getTotalWins() {
+        return totalWins;
+    }
+    public int getTotalLosses() {
+        return totalLosses;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+    public void setCharacterClass(CharacterClass characterClass) {
+        this.characterClass = characterClass;
+    }
+    public void addInventoryItem(InventoryItem item) {
+        this.inventory.add(item);
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\profile\ProfileManager.java ====================
+package gmae.profile;
+
+import gmae.core.enums.CharacterClass;
+
+import java.io.*;
+
+public class ProfileManager {
+    private static final String SAVE_DIR = "profiles/";
+
+    public void saveProfile(PlayerProfile profile) throws IOException {
+        String filename = SAVE_DIR + profile.getCharacterName() + ".txt";
+        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
+            writer.println(profile.getCharacterName());
+            writer.println(profile.getCharacterClass());
+            writer.println(profile.getTotalWins());
+            writer.println(profile.getTotalLosses());
+            for(String entry : profile.getQuestHistory()) {
+                writer.println("HISTORY:" + entry);
+            }
+            for(AchievementRecord a : profile.getAchievements()) {
+                writer.println("ACHIEVEMENT:" + a.getName());
+            }
+        }
+    }
+
+    public PlayerProfile loadProfile(String characterName) throws IOException {
+        String filename = SAVE_DIR + characterName + ".txt";
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+            String name = reader.readLine();
+            CharacterClass cls = CharacterClass.valueOf(reader.readLine());
+            PlayerProfile profile = new PlayerProfile(name, cls);
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("HISTORY:")) {
+                    profile.getQuestHistory().add(line.substring(8));
+                }
+                else if (line.startsWith("ACHIEVEMENT:")) {
+                    profile.getAchievements().add(new AchievementRecord(line.substring(12)));
+                }
+            }
+            return profile;
+        }
+    }
+
+    public boolean profileExists(String characterName) {
+        return new File(SAVE_DIR + characterName + ".txt").exists();
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\ui\AdventureView.java ====================
+package gmae.ui;
+
+public class AdventureView {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\ui\ConsoleUI.java ====================
+package gmae.ui;
+
+public class ConsoleUI {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\ui\MainMenuView.java ====================
+package gmae.ui;
+
+public class MainMenuView {
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\ui\ProfileSetupView.java ====================
+package gmae.ui;
+
+public class ProfileSetupView {
+}
+
