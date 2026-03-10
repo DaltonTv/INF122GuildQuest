@@ -29,7 +29,6 @@ public class ProfileManager {
             String name = reader.readLine();
             CharacterClass cls = CharacterClass.valueOf(reader.readLine());
             PlayerProfile profile = new PlayerProfile(name, cls);
-            //TODO parse the rest
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("HISTORY:")) {
