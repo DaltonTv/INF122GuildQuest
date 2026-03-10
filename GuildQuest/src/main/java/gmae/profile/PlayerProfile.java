@@ -38,7 +38,7 @@ public class PlayerProfile {
         }
     }
 
-    public String getName() {
+    public String getCharacterName() {
         return name;
     }
     public CharacterClass getCharacterClass() {
