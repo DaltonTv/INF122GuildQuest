@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="GuildQuest:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/GuildQuest_jar</output-path>
+    <root id="archive" name="GuildQuest.jar">
+      <element id="module-output" name="GuildQuest" />
+    </root>
+  </artifact>
+</component>
