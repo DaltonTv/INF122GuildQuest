@@ -1,4 +1,5 @@
 package gmae.observer;
 
-public class GameObserver {
+public interface GameObserver {
+    void onGameEvent(String campaignName, String eventTitle);
 }
