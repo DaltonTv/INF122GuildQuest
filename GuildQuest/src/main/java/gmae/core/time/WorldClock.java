@@ -24,7 +24,7 @@ public class WorldClock {
     }
 
     public void advance(int minutes) {
-        currentTime = currentTime.plusMinutes(minutes);
+        currentTime = currentTime.add(minutes);
     }
 
     public void setTime(WorldTime newTime) {
