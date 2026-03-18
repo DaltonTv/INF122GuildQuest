@@ -8,14 +8,18 @@ public class QuestEvent {
     private UUID eventId;
     private String name;
     private Realm realm;
+    private WorldTime startTime;
+    private WorldTime endTime;
     private ArrayList<Character> participatingCharacters;
     private HashMap<Character, ArrayList<InventoryItem>> inventoryChanges;
 
-    public QuestEvent(String name, Realm realm, ArrayList<Character> participatingCharacters,
+    public QuestEvent(String name, Realm realm, WorldTime startTime, ArrayList<Character> participatingCharacters,
                       HashMap<Character, ArrayList<InventoryItem>> inventoryChanges) {
         this.eventId = UUID.randomUUID();
         updateName(name);
         updateRealm(realm);
+        this.startTime = startTime;
+        this.endTime = null; // optional
         this.participatingCharacters = new ArrayList<>();
         for(Character c : participatingCharacters) {
             addCharacter(c);
@@ -33,6 +37,12 @@ public class QuestEvent {
     public Realm getRealm() {
         return realm;
     }
+    public WorldTime getStartTime() {
+        return startTime;
+    }
+    public WorldTime getEndTime() {
+        return endTime;
+    }
     public ArrayList<Character> getParticipatingCharacters() {
         return participatingCharacters;
     }
@@ -45,6 +55,12 @@ public class QuestEvent {
     }
     public void updateRealm(Realm newRealm) {
         realm = newRealm;
+    }
+    public void setStartTime(WorldTime newStartTime) {
+        startTime = newStartTime;
+    }
+    public void setEndTime(WorldTime newEndTime) {
+        endTime = newEndTime;
     }
     public void addCharacter(Character character) {
         participatingCharacters.add(character);

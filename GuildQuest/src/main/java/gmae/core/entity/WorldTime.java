@@ -35,7 +35,7 @@ public class WorldTime {
     private WorldTime(int days, int hours, int minutes, boolean alreadyNormalized) {
         this.days = days;
         this.hours = hours;
-        this.minutes = minutes
+        this.minutes = minutes;
     }
 
     // ── API ───────────
@@ -48,11 +48,11 @@ public class WorldTime {
     }
 
     public WorldTime add(WorldTime other) {
-        return fromTotalMinutes(this.totalMinutes() + other.toTotalMinutes());
+        return fromTotalMinutes(this.toTotalMinutes() + other.toTotalMinutes());
     }
 
     public WorldTime subtract(WorldTime other) {
-        return fromTotalMinutes(this.totalMinutes() - other.toTotalMinutes());
+        return fromTotalMinutes(this.toTotalMinutes() - other.toTotalMinutes());
     }
 
     // ── Object overrides ───────────
