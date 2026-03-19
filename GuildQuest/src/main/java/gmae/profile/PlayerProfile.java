@@ -73,4 +73,10 @@ public class PlayerProfile {
     public void addInventoryItem(InventoryItem item) {
         this.inventory.add(item);
     }
+    public void setTotalWins(int totalWins) {
+        this.totalWins = totalWins;
+    }
+    public void setTotalLosses(int totalLosses) {
+        this.totalLosses = totalLosses;
+    }
 }
