@@ -33,7 +33,6 @@ public class ProfileManager {
             int wins = Integer.parseInt(reader.readLine());
             int loses = Integer.parseInt(reader.readLine());
             PlayerProfile profile = new PlayerProfile(name, cls);
-            profile.setCharacterClass(CharacterClass.valueOf(reader.readLine()));
             profile.setTotalWins(wins);
             profile.setTotalLosses(loses);
             String line;
