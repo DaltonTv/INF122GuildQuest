@@ -8,6 +8,7 @@ import gmae.profile.PlayerProfile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class GuildQuestManager {
 
@@ -39,7 +40,7 @@ public class GuildQuestManager {
     }
 
     // ── REUSED: Realm management from prior assignment ───────────
-    public Realm findRealm(String realmId) {
+    public Realm findRealm(UUID realmId) {
         for (Realm realm : realms) {
             if (realm.getRealmId().equals(realmId)) {
                 return realm;

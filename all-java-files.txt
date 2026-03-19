@@ -2186,7 +2186,6 @@ public class ProfileManager {
             int wins = Integer.parseInt(reader.readLine());
             int loses = Integer.parseInt(reader.readLine());
             PlayerProfile profile = new PlayerProfile(name, cls);
-            profile.setCharacterClass(CharacterClass.valueOf(reader.readLine()));
             profile.setTotalWins(wins);
             profile.setTotalLosses(loses);
             String line;
@@ -2210,24 +2209,232 @@ public class ProfileManager {
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\ui\AdventureView.java ====================
 package gmae.ui;
 
+import java.util.Scanner;
+
+import gmae.api.GameState;
+import gmae.api.PlayerInput;
+
 public class AdventureView {
+
+    public void showState(GameState state) {
+        System.out.println();
+        System.out.println("----------- Adventure State -----------");
+        System.out.println(state.getBoardDisplay());
+        System.out.println("Player 1 Score: " + state.getPlayer1Score());
+        System.out.println("Player 2 Score: " + state.getPlayer2Score());
+        System.out.println("Current Turn: Player " + state.getCurrentPlayerTurn());
+        System.out.println("Status: " + state.getStatusMessage());
+        System.out.println("---------------------------------------");
+        System.out.println();
+    }
+
+    public PlayerInput getPlayerInput(Scanner scanner, int playerId) {
+        System.out.println("Player " + playerId + " turn.");
+        System.out.println("Enter move: W = up, S = down, A = left, D = right");
+        System.out.print("Your move: ");
+
+        String raw = scanner.nextLine().trim();
+        return PlayerInput.fromString(playerId, raw);
+    }
+
+    public void showTurnResult(String message) {
+        System.out.println(message);
+        System.out.println();
+    }
+
+    public void showWinner(String winner) {
+        System.out.println("Game Over!");
+        System.out.println("Winner: " + winner);
+        System.out.println();
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\ui\ConsoleUI.java ====================
 package gmae.ui;
 
+import java.util.List;
+import java.util.Scanner;
+
+import gmae.api.GuildQuestFacade;
+import gmae.api.MiniAdventure;
+import gmae.api.PlayerInput;
+import gmae.api.TurnResult;
+import gmae.profile.PlayerProfile;
+
 public class ConsoleUI {
+
+    private GuildQuestFacade facade;
+    private Scanner scanner;
+    private MainMenuView mainMenuView;
+    private ProfileSetupView profileSetupView;
+    private AdventureView adventureView;
+
+    public ConsoleUI() {
+        this.facade = new GuildQuestFacade();
+        this.scanner = new Scanner(System.in);
+        this.mainMenuView = new MainMenuView();
+        this.profileSetupView = new ProfileSetupView();
+        this.adventureView = new AdventureView();
+    }
+
+    public void run() {
+        mainMenuView.showWelcome();
+
+        PlayerProfile player1 = profileSetupView.createPlayerProfile(scanner, 1);
+        PlayerProfile player2 = profileSetupView.createPlayerProfile(scanner, 2);
+
+        facade.startSession(player1, player2);
+
+        boolean running = true;
+
+        while (running) {
+            List<String> adventures = facade.getAvailableAdventures();
+            mainMenuView.showAdventureMenu(adventures);
+
+            System.out.print("Choose an adventure: ");
+            String input = scanner.nextLine().trim();
+
+            if (input.equals("0")) {
+                running = false;
+            }
+            else 
+            {
+                int choice = parseNumber(input);
+
+                if (choice < 1 || choice > adventures.size()) 
+                {
+                    mainMenuView.showInvalidChoice();
+                }
+                else 
+                {
+                    String selectedAdventure = adventures.get(choice - 1);
+                    launchAndPlayAdventure(selectedAdventure);
+                }
+            }
+        }
+
+        facade.endSession();
+        System.out.println("Thanks for playing GuildQuest!");
+    }
+
+    private void launchAndPlayAdventure(String adventureType) {
+        facade.launchAdventure(adventureType);
+
+        MiniAdventure adventure = facade.getActiveAdventure();
+
+        if (adventure == null) {
+            System.out.println("Could not launch adventure.");
+            System.out.println();
+            return;
+        }
+
+        while (!adventure.isComplete()) {
+            adventureView.showState(adventure.getState());
+
+            int currentPlayer = adventure.getState().getCurrentPlayerTurn();
+            PlayerInput input = adventureView.getPlayerInput(scanner, currentPlayer);
+
+            TurnResult result = adventure.advanceTurn(input);
+            adventureView.showTurnResult(result.getMessage());
+        }
+
+        adventureView.showState(adventure.getState());
+        adventureView.showWinner(adventure.getWinner());
+    }
+
+    private int parseNumber(String input) {
+        try {
+            return Integer.parseInt(input);
+        }
+        catch (NumberFormatException e) {
+            return -1;
+        }
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\ui\MainMenuView.java ====================
 package gmae.ui;
 
+import java.util.List;
+
 public class MainMenuView {
+
+    public void showWelcome() {
+        System.out.println("==================================");
+        System.out.println(" GuildQuest Mini-Adventure Engine ");
+        System.out.println("==================================");
+        System.out.println();
+    }
+
+    public void showAdventureMenu(List<String> adventureTypes) {
+        System.out.println("Available Adventures:");
+
+        int i = 0;
+        while (i < adventureTypes.size()) {
+            System.out.println((i + 1) + ") " + adventureTypes.get(i));
+            i = i + 1;
+        }
+
+        System.out.println("0) Exit");
+        System.out.println();
+    }
+
+    public void showInvalidChoice() {
+        System.out.println("Invalid choice. Please try again.");
+        System.out.println();
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\ui\ProfileSetupView.java ====================
 package gmae.ui;
 
+import java.util.Scanner;
+
+import gmae.core.enums.CharacterClass;
+import gmae.profile.PlayerProfile;
+
 public class ProfileSetupView {
+
+    public PlayerProfile createPlayerProfile(Scanner scanner, int playerNumber) {
+        System.out.println("Set up Player " + playerNumber + ":");
+
+        System.out.print("Enter character name: ");
+        String name = scanner.nextLine().trim();
+
+        CharacterClass chosenClass = chooseCharacterClass(scanner);
+
+        System.out.println("Created Player " + playerNumber + ": " + name + " (" + chosenClass + ")");
+        System.out.println();
+
+        return new PlayerProfile(name, chosenClass);
+    }
+
+    private CharacterClass chooseCharacterClass(Scanner scanner) {
+        CharacterClass[] classes = CharacterClass.values();
+
+        System.out.println("Choose a class:");
+        int i = 0;
+        while (i < classes.length) {
+            System.out.println((i + 1) + ") " + classes[i]);
+            i = i + 1;
+        }
+
+        while (true) {
+            System.out.print("Enter class number: ");
+            String input = scanner.nextLine().trim();
+
+            try {
+                int choice = Integer.parseInt(input);
+
+                if (choice >= 1 && choice <= classes.length) {
+                    return classes[choice - 1];
+                }
+            }
+            catch (NumberFormatException e) {
+            }
+
+            System.out.println("Invalid class choice. Please try again.");
+        }
+    }
 }
 
