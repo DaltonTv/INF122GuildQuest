@@ -7,6 +7,7 @@ import gmae.api.TurnResult;
 import gmae.core.entity.GridPosition;
 import gmae.core.entity.Realm;
 import gmae.core.entity.WorldTime;
+import gmae.core.time.WorldClock;
 import gmae.profile.PlayerProfile;
 
 import java.util.List;
@@ -23,6 +24,8 @@ public class TimedRaidAdventure implements MiniAdventure {
     public void initialize(PlayerProfile p1, PlayerProfile p2) {
         this.p1 = p1;
         this.p2 = p2;
+
+        WorldClock.getInstance().setTime(new WorldTime(1, 0, 0));
 
         Realm raidRealm = new Realm("Shadow Keep", "Dark fortress", 0, GRID_SIZE, GRID_SIZE);
         WorldTime start = new WorldTime(1, 0, 0);
@@ -47,10 +50,10 @@ public class TimedRaidAdventure implements MiniAdventure {
         if (input.getPlayerId() != state.getCurrentPlayerTurn()) {
             return new TurnResult("Not your turn, Player " + input.getPlayerId() + "!", getState(),false);
         }
-        //1. Move current player
+        // 1. Move current player
         moveCurrentPlayer(input.getAction());
 
-        //2. Try completing an objective at new position
+        // 2. Try completing an objective at new position
         GridPosition position = state.getCurrentPlayerPosition();
         boolean scored = state.tryCompleteObjectiveAt(position.getX(), position.getY());
         if (scored) {
@@ -60,15 +63,16 @@ public class TimedRaidAdventure implements MiniAdventure {
                    +state.getTotalObjectives() + " done.");
         }
 
-        //3. Tick timer
-        state.tickTimer();
-
-        //4. Check win/loss
+        // 3. Check win/loss
         if (state.allObjectivesComplete()) {
             state.setComplete(true);
             state.setSuccess(true);
             state.setStatusMessage("Victory! All objectives completed in time!");
+            return new TurnResult(state.getStatusMessage(), getState(), true);
         }
+
+        // 4. Tick timer
+
         else if (state.isTimedOut()) {
             state.setComplete(true);
             state.setSuccess(false);
@@ -83,6 +87,13 @@ public class TimedRaidAdventure implements MiniAdventure {
                         + state.getCurrentPlayerTurn() + "'s turn. Time left: "
                         + state.getFormattedTimeRemaining());
             }
+            else {
+                state.setStatusMessage("Player completed an objective! "
+                        + state.getObjectivesCompleted() + "/"
+                        + state.getTotalObjectives() + " done. Player "
+                        + state. getCurrentPlayerTurn() + "'s turn. Time left: "
+                        + state.getFormattedTimeRemaining());
+            }
         }
 
         return new TurnResult(state.getStatusMessage(), getState(), state.isComplete());
@@ -93,8 +104,8 @@ public class TimedRaidAdventure implements MiniAdventure {
         return new GameState(
                 state.buildBoardDisplay(p1, p2),
                 0,
-                0,
                 state.getCurrentPlayerTurn(),
+                0,
                 state.getStatusMessage()
         );
     }

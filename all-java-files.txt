@@ -2120,6 +2120,17 @@ public class StandardAdventureFactory extends MiniAdventureFactory {
     }
 }
 
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\Main.java ====================
+package gmae;
+
+import gmae.ui.ConsoleUI;
+
+public class Main {
+    public static void main(String[] args) {
+        new ConsoleUI().run();
+    }
+}
+
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\observer\GameObserver.java ====================
 package gmae.observer;
 

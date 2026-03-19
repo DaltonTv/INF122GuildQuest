@@ -66,7 +66,7 @@ public class RaidTimer {
     public void reset(int timeLimitMinutes) {
         this.elapsed = new WorldTime(0, 0, 0);
         this.expired = false;
-        worldClock.setTime(startTime);
+        worldClock.setTime(new WorldTime(1, 0, 0));
     }
 
 }
