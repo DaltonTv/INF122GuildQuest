@@ -8,6 +8,8 @@ import gmae.api.MiniAdventure;
 import gmae.api.PlayerInput;
 import gmae.api.TurnResult;
 import gmae.profile.PlayerProfile;
+import gmae.profile.ProfileManager;
+import java.io.IOException;
 
 public class ConsoleUI {
 
@@ -16,6 +18,8 @@ public class ConsoleUI {
     private MainMenuView mainMenuView;
     private ProfileSetupView profileSetupView;
     private AdventureView adventureView;
+    private PlayerProfile p1;
+    private PlayerProfile p2;
 
     public ConsoleUI() {
         this.facade = new GuildQuestFacade();
@@ -28,10 +32,10 @@ public class ConsoleUI {
     public void run() {
         mainMenuView.showWelcome();
 
-        PlayerProfile player1 = profileSetupView.createPlayerProfile(scanner, 1);
-        PlayerProfile player2 = profileSetupView.createPlayerProfile(scanner, 2);
+        p1 = profileSetupView.createPlayerProfile(scanner, 1);
+        p2 = profileSetupView.createPlayerProfile(scanner, 2);
 
-        facade.startSession(player1, player2);
+        facade.startSession(p1, p2);
 
         boolean running = true;
 
@@ -71,23 +75,51 @@ public class ConsoleUI {
         MiniAdventure adventure = facade.getActiveAdventure();
 
         if (adventure == null) {
-            System.out.println("Could not launch adventure.");
-            System.out.println();
+            System.out.println("Could not launch adventure.\n");
             return;
         }
 
-        while (!adventure.isComplete()) {
-            adventureView.showState(adventure.getState());
+        adventureView.showState(adventure.getState());
 
+        while (!adventure.isComplete()) {
             int currentPlayer = adventure.getState().getCurrentPlayerTurn();
             PlayerInput input = adventureView.getPlayerInput(scanner, currentPlayer);
-
             TurnResult result = adventure.advanceTurn(input);
             adventureView.showTurnResult(result.getMessage());
+            adventureView.showState(adventure.getState());
         }
 
-        adventureView.showState(adventure.getState());
         adventureView.showWinner(adventure.getWinner());
+        recordAndSave(adventureType, adventure.getWinner(), p1, p2);
+    }
+
+    private void recordAndSave(String adventureType, String winner,
+                               PlayerProfile p1, PlayerProfile p2) {
+        if (winner == null || winner.contains("Nobody")) {
+            p1.recordLoss(adventureType);
+            p2.recordLoss(adventureType);
+        }
+        else if (winner.contains("&")) {
+            p1.recordWin(adventureType);
+            p2.recordWin(adventureType);
+        }
+        else if (winner.equals(p1.getCharacterName())) {
+            p1.recordWin(adventureType);
+            p2.recordLoss(adventureType);
+        }
+        else {
+            p2.recordWin(adventureType);
+            p1.recordLoss(adventureType);
+        }
+
+        ProfileManager profileManager = new ProfileManager();
+        try {
+            profileManager.saveProfile(p1);
+            profileManager.saveProfile(p2);
+            System.out.println("Profiles saved.");
+        } catch (IOException e) {
+            System.out.println("Warning: could not save profiles - " + e.getMessage());
+        }
     }
 
     private int parseNumber(String input) {
