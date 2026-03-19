@@ -51,6 +51,10 @@ public class WorldTime {
         return fromTotalMinutes(this.toTotalMinutes() + other.toTotalMinutes());
     }
 
+    public WorldTime add(int minutes) {
+        return fromTotalMinutes(this.toTotalMinutes() + minutes);
+    }
+
     public WorldTime subtract(WorldTime other) {
         return fromTotalMinutes(this.toTotalMinutes() - other.toTotalMinutes());
     }

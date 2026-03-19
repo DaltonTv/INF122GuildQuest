@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerProfile {
-    private String name;
+    private String characterName;
     private CharacterClass characterClass;
     private List<InventoryItem> inventory;
     private List<String> questHistory;
@@ -16,7 +16,7 @@ public class PlayerProfile {
     private int totalLosses;
 
     public PlayerProfile(String characterName, CharacterClass characterClass) {
-        this.name = characterName;
+        this.characterName = characterName;
         this.characterClass = characterClass;
         this.inventory = new ArrayList<>();
         this.questHistory = new ArrayList<>();
@@ -40,7 +40,7 @@ public class PlayerProfile {
     }
 
     public String getCharacterName() {
-        return name;
+        return characterName;
     }
     public CharacterClass getCharacterClass() {
         return characterClass;
@@ -61,11 +61,14 @@ public class PlayerProfile {
         return totalLosses;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setCharacterName(String characterName) {
+        this.characterName = characterName;
     }
     public void setCharacterClass(CharacterClass characterClass) {
         this.characterClass = characterClass;
+    }
+    public void addQuestEvent(String campaingName, String eventTitle) {
+        this.questHistory.add(campaingName + ": " + eventTitle);
     }
     public void addInventoryItem(InventoryItem item) {
         this.inventory.add(item);

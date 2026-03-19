@@ -13,7 +13,7 @@ public class ProfileUpdateObserver implements GameObserver {
     @Override
     public void onGameEvent(String campaignName, String eventTitle) {
         profile.addQuestEvent(campaignName, eventTitle);
-        System.out.println("[Profile Update] " + profile.getName()
+        System.out.println("[Profile Update] " + profile.getCharacterName()
                 + " — event recorded: " + eventTitle);
     }
 }

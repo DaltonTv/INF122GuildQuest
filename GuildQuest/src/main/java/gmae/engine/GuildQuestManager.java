@@ -2,11 +2,7 @@ package gmae.engine;
 
 import gmae.api.MiniAdventure;
 import gmae.core.entity.Realm;
-import gmae.core.entity.Campaign;
-import gmae.core.entity.QuestEvent;
-import gmae.core.entity.WorldTime;
 import gmae.core.time.WorldClock;
-import gmae.core.enums.PermissionLevel;
 import gmae.observer.GameObserver;
 import gmae.profile.PlayerProfile;
 
@@ -65,7 +61,7 @@ public class GuildQuestManager {
         sessionStore.setPlayers(p1, p2);
         sessionStore.setSessionActive(true);
         System.out.println("[GMAE] Session started: "
-                + p1.getName() + " & " + p2.getName());
+                + p1.getCharacterName() + " & " + p2.getCharacterName());
     }
 
     public void endSession() {
