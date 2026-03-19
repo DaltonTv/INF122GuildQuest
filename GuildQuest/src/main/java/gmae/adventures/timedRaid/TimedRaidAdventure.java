@@ -9,7 +9,6 @@ import gmae.core.entity.Realm;
 import gmae.core.entity.WorldTime;
 import gmae.profile.PlayerProfile;
 
-import javax.swing.*;
 import java.util.List;
 
 public class TimedRaidAdventure implements MiniAdventure {
