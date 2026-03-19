@@ -7,7 +7,266 @@ public class Relic {
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntAdventure.java ====================
 package gmae.adventures.relicHunt;
 
-public class RelicHuntAdventure {
+import java.util.HashSet;
+import java.util.Set;
+
+import gmae.api.GameState;
+import gmae.api.MiniAdventure;
+import gmae.api.PlayerInput;
+import gmae.api.TurnResult;
+import gmae.profile.PlayerProfile;
+
+public class RelicHuntAdventure implements MiniAdventure 
+{
+
+    private PlayerProfile player1;
+    private PlayerProfile player2;
+
+    private int player1X;
+    private int player1Y;
+    private int player2X;
+    private int player2Y;
+
+    private int player1Score;
+    private int player2Score;
+
+    private int currentPlayerTurn;
+    private boolean complete;
+    private String winner;
+    private String statusMessage;
+
+    private final int width = 5;
+    private final int height = 5;
+
+    private Set<String> relicPositions;
+
+    @Override
+    public void initialize(PlayerProfile p1, PlayerProfile p2) 
+    {
+        this.player1 = p1;
+        this.player2 = p2;
+
+        this.player1X = 0;
+        this.player1Y = 0;
+
+        this.player2X = 4;
+        this.player2Y = 4;
+
+        this.player1Score = 0;
+        this.player2Score = 0;
+
+        this.currentPlayerTurn = 1;
+        this.complete = false;
+        this.winner = "";
+        this.statusMessage = "Relic Hunt started! Player 1 goes first.";
+
+        this.relicPositions = new HashSet<String>();
+        relicPositions.add("1,1");
+        relicPositions.add("2,3");
+        relicPositions.add("3,1");
+    }
+
+    @Override
+    public TurnResult advanceTurn(PlayerInput input) 
+    {
+        if (complete) {
+            return new TurnResult("The game is already over.", getState(), true);
+        }
+
+        if (input.getPlayerId() != currentPlayerTurn) 
+            {
+            return new TurnResult("It is not Player " + input.getPlayerId() + "'s turn.", getState(), false);
+        }
+
+        moveCurrentPlayer(input.getAction());
+        collectRelicIfPresent();
+
+        if (player1Score >= 2) 
+            {
+            complete = true;
+            winner = player1.getCharacterName();
+            statusMessage = winner + " wins Relic Hunt!";
+        } 
+        else if (player2Score >= 2) 
+        {
+            complete = true;
+            winner = player2.getCharacterName();
+            statusMessage = winner + " wins Relic Hunt!";
+        } 
+        else if (relicPositions.isEmpty()) 
+        {
+            complete = true;
+
+            if (player1Score > player2Score) 
+            {
+                winner = player1.getCharacterName();
+                statusMessage = winner + " wins Relic Hunt!";
+            } 
+            else if (player2Score > player1Score) 
+            {
+                winner = player2.getCharacterName();
+                statusMessage = winner + " wins Relic Hunt!";
+            } 
+            else 
+            {
+                winner = "Tie";
+                statusMessage = "The game ended in a tie.";
+            }
+        } 
+        else 
+        {
+            if (currentPlayerTurn == 1) 
+            {
+                currentPlayerTurn = 2;
+            } 
+            else 
+            {
+                currentPlayerTurn = 1;
+            }
+
+            statusMessage = "Turn complete. Player " + currentPlayerTurn + "'s turn.";
+        }
+
+        return new TurnResult(statusMessage, getState(), complete);
+    }
+
+    private void moveCurrentPlayer(PlayerInput.Action action) 
+    {
+        if (currentPlayerTurn == 1) 
+        {
+            if (action == PlayerInput.Action.MOVE_UP && player1Y > 0) 
+            {
+                player1Y--;
+            } 
+            else if (action == PlayerInput.Action.MOVE_DOWN && player1Y < height - 1) 
+            {
+                player1Y++;
+            } 
+            else if (action == PlayerInput.Action.MOVE_LEFT && player1X > 0) 
+            {
+                player1X--;
+            } 
+            else if (action == PlayerInput.Action.MOVE_RIGHT && player1X < width - 1) 
+            {
+                player1X++;
+            }
+        } 
+        else 
+        {
+            if (action == PlayerInput.Action.MOVE_UP && player2Y > 0) 
+            {
+                player2Y--;
+            } 
+            else if (action == PlayerInput.Action.MOVE_DOWN && player2Y < height - 1) 
+            {
+                player2Y++;
+            } 
+            else if (action == PlayerInput.Action.MOVE_LEFT && player2X > 0) 
+            {
+                player2X--;
+            } 
+            else if (action == PlayerInput.Action.MOVE_RIGHT && player2X < width - 1) 
+            {
+                player2X++;
+            }
+        }
+    }
+
+    private void collectRelicIfPresent() 
+    {
+        String currentPosition;
+
+        if (currentPlayerTurn == 1) 
+        {
+            currentPosition = player1X + "," + player1Y;
+
+            if (relicPositions.contains(currentPosition)) 
+            {
+                relicPositions.remove(currentPosition);
+                player1Score++;
+                statusMessage = player1.getCharacterName() + " found a relic!";
+            }
+        } 
+        else 
+        {
+            currentPosition = player2X + "," + player2Y;
+
+            if (relicPositions.contains(currentPosition)) 
+            {
+                relicPositions.remove(currentPosition);
+                player2Score++;
+                statusMessage = player2.getCharacterName() + " found a relic!";
+            }
+        }
+    }
+
+    @Override
+    public GameState getState() 
+    {
+        return new GameState(
+                buildBoardDisplay(),
+                player1Score,
+                currentPlayerTurn,
+                player2Score,
+                statusMessage
+        );
+    }
+
+    @Override
+    public boolean isComplete() 
+    {
+        return complete;
+    }
+
+    @Override
+    public String getWinner() 
+    {
+        return winner;
+    }
+
+    @Override
+    public void reset() 
+    {
+        if (player1 != null && player2 != null) 
+        {
+            initialize(player1, player2);
+        }
+    }
+
+    private String buildBoardDisplay() 
+    {
+        StringBuilder board = new StringBuilder();
+
+        for (int y = 0; y < height; y++) 
+        {
+            for (int x = 0; x < width; x++) 
+            {
+                if (player1X == x && player1Y == y && player2X == x && player2Y == y) 
+                {
+                    board.append("B ");
+                } 
+                else if (player1X == x && player1Y == y) 
+                {
+                    board.append("1 ");
+                } 
+                else if (player2X == x && player2Y == y) 
+                {
+                    board.append("2 ");
+                } 
+                else if (relicPositions.contains(x + "," + y)) 
+                {
+                    board.append("R ");
+                } 
+                else 
+                {
+                    board.append(". ");
+                }
+            }
+            board.append("\n");
+        }
+
+        return board.toString();
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntMap.java ====================
@@ -37,7 +296,42 @@ public class RaidTimer {
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\TimedRaidAdventure.java ====================
 package gmae.adventures.timedRaid;
 
-public class TimedRaidAdventure {
+import gmae.api.GameState;
+import gmae.api.MiniAdventure;
+import gmae.api.PlayerInput;
+import gmae.api.TurnResult;
+import gmae.profile.PlayerProfile;
+
+public class TimedRaidAdventure implements MiniAdventure {
+    @Override
+    public void initialize(PlayerProfile p1, PlayerProfile p2) {
+
+    }
+
+    @Override
+    public TurnResult advanceTurn(PlayerInput input) {
+        return null;
+    }
+
+    @Override
+    public GameState getState() {
+        return null;
+    }
+
+    @Override
+    public boolean isComplete() {
+        return false;
+    }
+
+    @Override
+    public String getWinner() {
+        return "";
+    }
+
+    @Override
+    public void reset() {
+
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\TimedRaidState.java ====================
@@ -85,7 +379,52 @@ public class GameState {
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\api\GuildQuestFacade.java ====================
 package gmae.api;
 
-public class GuildQuestFacade {
+import java.util.List;
+
+import gmae.engine.GuildQuestManager;
+import gmae.engine.SessionStateStore;
+import gmae.profile.PlayerProfile;
+
+public class GuildQuestFacade 
+{
+    private GuildQuestManager manager;
+    private SessionStateStore sessionStore;
+
+    public GuildQuestFacade() 
+    {
+        this.manager = GuildQuestManager.getInstance();
+        this.sessionStore = SessionStateStore.getInstance();
+    }
+
+    public void startSession(PlayerProfile player1, PlayerProfile player2) 
+    {
+        manager.startSession(player1, player2);
+    }
+
+    public void launchAdventure(String adventureType) 
+    {
+        manager.launchAdventure(adventureType);
+    }
+
+    public List<String> getAvailableAdventures() 
+    {
+        return manager.getAvailableAdventures();
+    }
+
+    public MiniAdventure getActiveAdventure() 
+    {
+        return sessionStore.getActiveAdventure();
+    }
+
+    public boolean isSessionActive() 
+    {
+        return manager.isSessionActive();
+    }
+
+    public void endSession() 
+    {
+        manager.endSession();
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\api\MiniAdventure.java ====================
@@ -164,7 +503,96 @@ public class TurnResult {
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\builder\QuestEventBuilder.java ====================
 package gmae.builder;
 
+import gmae.core.entity.Character;
+import gmae.core.entity.InventoryItem;
+import gmae.core.entity.QuestEvent;
+import gmae.core.entity.Realm;
+import gmae.core.entity.WorldTime;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+/**
+ * QuestEventBuilder builds a QuestEvent with mandatory fields
+ * Can use optional fields if needed
+ * Mandatory fields: name, startTime, realm
+ * Optional fields: endTime
+ * Could be empty: participatingCharacters, inventoryChanges (grant/remove items)
+ */
 public class QuestEventBuilder {
+    // ── Mandatory fields ──────
+    private String name;
+    private WorldTime startTime;
+    private Realm realm;
+
+    // ── Optional fields ───────────────────────────────────────────────────────
+    private WorldTime endTime;
+    private ArrayList<Character> participatingCharacters;
+    private HashMap<Character, ArrayList<InventoryItem>> inventoryChanges;
+
+    public QuestEventBuilder() {
+        this.participatingCharacters = new ArrayList<>();
+        this.inventoryChanges = new HashMap<>();
+    }
+
+    public QuestEventBuilder setName(String name) {
+        this.name = name;
+        return this;
+    }
+    public QuestEventBuilder setStartTime(WorldTime startTime) {
+        this.startTime = startTime;
+        return this;
+    }
+    public QuestEventBuilder setEndTime(WorldTime endTime) {
+        this.endTime = endTime;
+        return this;
+    }
+    public QuestEventBuilder setRealm(Realm realm) {
+        this.realm = realm;
+        return this;
+    }
+    public QuestEventBuilder addParticipant(Character character) {
+        this.participatingCharacters.add(character);
+        return this;
+    }
+    public QuestEventBuilder setInventoryChanges(
+            HashMap<Character, ArrayList<InventoryItem>> inventoryChanges) {
+        this.inventoryChanges = new HashMap<>(inventoryChanges);
+        return this;
+    }
+
+    public QuestEvent build() {
+        // Collect any missing mandatory fields
+        ArrayList<String> missing = new ArrayList<>();
+        if (name == null || name.isEmpty()) {
+            missing.add("name");
+        }
+        if (startTime == null) {
+            missing.add("startTime");
+        }
+        if (realm == null) {
+            missing.add("realm");
+        }
+ 
+        if (!missing.isEmpty()) {
+            throw new IllegalStateException(
+                "QuestEvent missing required fields: " + String.join(", ", missing)
+            );
+        }
+
+        QuestEvent questEvent = new QuestEvent(
+            name,
+            realm,
+            startTime,
+            participatingCharacters,
+            inventoryChanges
+        );
+
+        if (endTime != null) {
+            questEvent.setEndTime(endTime);
+        }
+
+        return questEvent;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\Campaign.java ====================
@@ -370,14 +798,18 @@ public class QuestEvent {
     private UUID eventId;
     private String name;
     private Realm realm;
+    private WorldTime startTime;
+    private WorldTime endTime;
     private ArrayList<Character> participatingCharacters;
     private HashMap<Character, ArrayList<InventoryItem>> inventoryChanges;
 
-    public QuestEvent(String name, Realm realm, ArrayList<Character> participatingCharacters,
+    public QuestEvent(String name, Realm realm, WorldTime startTime, ArrayList<Character> participatingCharacters,
                       HashMap<Character, ArrayList<InventoryItem>> inventoryChanges) {
         this.eventId = UUID.randomUUID();
         updateName(name);
         updateRealm(realm);
+        this.startTime = startTime;
+        this.endTime = null; // optional
         this.participatingCharacters = new ArrayList<>();
         for(Character c : participatingCharacters) {
             addCharacter(c);
@@ -395,6 +827,12 @@ public class QuestEvent {
     public Realm getRealm() {
         return realm;
     }
+    public WorldTime getStartTime() {
+        return startTime;
+    }
+    public WorldTime getEndTime() {
+        return endTime;
+    }
     public ArrayList<Character> getParticipatingCharacters() {
         return participatingCharacters;
     }
@@ -407,6 +845,12 @@ public class QuestEvent {
     }
     public void updateRealm(Realm newRealm) {
         realm = newRealm;
+    }
+    public void setStartTime(WorldTime newStartTime) {
+        startTime = newStartTime;
+    }
+    public void setEndTime(WorldTime newEndTime) {
+        endTime = newEndTime;
     }
     public void addCharacter(Character character) {
         participatingCharacters.add(character);
@@ -495,6 +939,10 @@ public class Realm {
     public int[][] getRealmGrid() {
         return realmGrid;
     }
+
+    public WorldTime getLocalTime(WorldTime worldTime) {
+        return worldTime.add(this.timeOffset);
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\entity\User.java ====================
@@ -546,6 +994,91 @@ public class User {
 package gmae.core.entity;
 
 public class WorldTime {
+    private static final int HOURS_PER_DAY = 24;
+    private static final int MINUTES_PER_HOUR = 60;
+    private static final int MINUTES_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR;
+
+    private final int days;
+    private final int hours;
+    private final int minutes;
+
+    public WorldTime(int days, int hours, int minutes) {
+        WorldTime normalized = fromTotalMinutes(toTotalMinutes(days, hours, minutes));
+        this.days = normalized.days;
+        this.hours = normalized.hours;
+        this.minutes = normalized.minutes;
+    }
+
+    // ── Private helpers ───────────
+
+    private static int toTotalMinutes(int days, int hours, int minutes) {
+        return days * MINUTES_PER_DAY + hours * MINUTES_PER_HOUR + minutes;
+    }
+
+    private static WorldTime fromTotalMinutes(int totalMinutes) {
+        int d = totalMinutes / MINUTES_PER_DAY;
+        int remaining = totalMinutes % MINUTES_PER_DAY;
+        int h = remaining / MINUTES_PER_HOUR;
+        int m = remaining % MINUTES_PER_HOUR;
+
+        return new WorldTime(d, h, m, true);
+    }
+
+    /** Private constructor that skips normalization */
+    private WorldTime(int days, int hours, int minutes, boolean alreadyNormalized) {
+        this.days = days;
+        this.hours = hours;
+        this.minutes = minutes;
+    }
+
+    // ── API ───────────
+    public int getDays() { return days; }
+    public int getHours() { return hours; }
+    public int getMinutes() { return minutes; }
+
+    public int toTotalMinutes() {
+        return toTotalMinutes(days, hours, minutes);
+    }
+
+    public WorldTime add(WorldTime other) {
+        return fromTotalMinutes(this.toTotalMinutes() + other.toTotalMinutes());
+    }
+
+    public WorldTime add(int minutes) {
+        return fromTotalMinutes(this.toTotalMinutes() + minutes);
+    }
+
+    public WorldTime subtract(WorldTime other) {
+        return fromTotalMinutes(this.toTotalMinutes() - other.toTotalMinutes());
+    }
+
+    // ── Object overrides ───────────
+    @Override
+    public String toString() {
+        String timeStr = String.format("%02d:%02d", hours, minutes);
+        if (days > 0) {
+            return "Day " + days + ", " + timeStr;
+        }
+        return timeStr;
+    }
+
+    /** Makes it so equal times have same hash.
+     *  If two objects are equal using equals(),
+     *  They return same hash
+     */
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof WorldTime)) return false;
+        WorldTime other = (WorldTime) obj;
+        return days == other.days && hours == other.hours && minutes == other.minutes;
+    }
+
+    @Override
+    public int hashCode() {
+        return toTotalMinutes();
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\enums\CharacterClass.java ====================
@@ -579,67 +1112,340 @@ public enum Theme {
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\BothTimeStrategy.java ====================
 package gmae.core.time;
 
-public class BothTimeStrategy {
+import gmae.core.entity.WorldTime;
+import gmae.core.entity.Realm;
+
+// ── Displays both world time and realm's local time ──────────
+public class BothTimeStrategy implements TimeDisplayStrategy {
+    @Override
+    public String format(WorldTime worldTime, Realm realm) {
+        WorldTime local = realm.getLocalTime(worldTime);
+        return "WORLD: " + worldTime + " | LOCAL: " + local;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\LocalOnlyStrategy.java ====================
 package gmae.core.time;
 
-public class LocalOnlyStrategy {
+import gmae.core.entity.WorldTime;
+import gmae.core.entity.Realm;
+
+// ── Time derived from realm's time offset ──────────
+public class LocalOnlyStrategy implements TimeDisplayStrategy {
+    @Override
+    public String format(WorldTime worldTime, Realm realm) {
+        WorldTime local = realm.getLocalTime(worldTime);
+        return "LOCAL: " + local;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\TimeDisplayStrategy.java ====================
 package gmae.core.time;
 
-public class TimeDisplayStrategy {
+import gmae.core.entity.WorldTime;
+import gmae.core.entity.Realm;
+
+// ── Strategy interface for formatting time display ──────────
+public interface TimeDisplayStrategy {
+    String format(WorldTime worldTime, Realm realm);
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\WorldClock.java ====================
 package gmae.core.time;
 
+import gmae.core.entity.WorldTime;
+
 public class WorldClock {
+    // ── REUSED: Singleton pattern from prior assignment ──────────
+
+    private static WorldClock instance;
+    private WorldTime currentTime;
+
+    private WorldClock() {
+        this.currentTime = new WorldTime(1, 0, 0);
+    }
+
+    public static WorldClock getInstance() {
+        if (instance == null) {
+            instance = new WorldClock();
+        }
+        return instance;
+    }
+
+    public WorldTime now() {
+        return currentTime;
+    }
+
+    public void advance(int minutes) {
+        currentTime = currentTime.add(minutes);
+    }
+
+    public void setTime(WorldTime newTime) {
+        this.currentTime = newTime;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\time\WorldOnlyStrategy.java ====================
 package gmae.core.time;
 
-public class WorldOnlyStrategy {
+import gmae.core.entity.WorldTime;
+import gmae.core.entity.Realm;
+
+// ── Display only world time; ignore realm offsets ──────────
+public class WorldOnlyStrategy implements TimeDisplayStrategy {
+    @Override
+    public String format(WorldTime worldTime, Realm realm) {
+        return "WORLD: " + worldTime;
+    }
 }
+
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\AdventureRegistry.java ====================
 package gmae.engine;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class AdventureRegistry {
+
+    private final List<String> registeredTypes;
+
+    public AdventureRegistry() {
+        this.registeredTypes = new ArrayList<>();
+        registeredTypes.add("RelicHunt");
+        registeredTypes.add("TimedRaid");
+    }
+
+    public List<String> getRegisteredTypes() {
+        return registeredTypes;
+    }
+
+    public void register(String adventureType) {
+        if (!registeredTypes.contains(adventureType)) {
+            registeredTypes.add(adventureType);
+        }
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\GuildQuestManager.java ====================
 package gmae.engine;
 
+import gmae.api.MiniAdventure;
+import gmae.core.entity.Realm;
+import gmae.core.time.WorldClock;
+import gmae.observer.GameObserver;
+import gmae.profile.PlayerProfile;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class GuildQuestManager {
+
+    // ── REUSED: Singleton pattern from prior assignment ──────────
+    private static GuildQuestManager instance;
+
+    // ── REUSED: core domain lists from prior GuildQuestManager ───
+    private List<Realm> realms;
+    private List<GameObserver> observers;
+
+    // ── NEW: GMAE-specific fields ────────────────────────────────
+    private final SessionStateStore sessionStore;
+    private final AdventureRegistry registry;
+    private final WorldClock worldClock; // REUSED: Singleton WorldClock
+
+    private GuildQuestManager() {
+        this.realms = new ArrayList<>();
+        this.observers = new ArrayList<>();
+        this.sessionStore = SessionStateStore.getInstance();
+        this.registry = new AdventureRegistry();
+        this.worldClock = WorldClock.getInstance(); // REUSED
+    }
+
+    public static GuildQuestManager getInstance() {
+        if (instance == null) {
+            instance = new GuildQuestManager();
+        }
+        return instance;
+    }
+
+    // ── REUSED: Realm management from prior assignment ───────────
+    public Realm findRealm(String realmId) {
+        for (Realm realm : realms) {
+            if (realm.getRealmId().equals(realmId)) {
+                return realm;
+            }
+        }
+        return null;
+    }
+
+    public List<Realm> getRealms() {
+        return realms;
+    }
+
+    public WorldClock getWorldClock() {
+        return worldClock;
+    }
+
+    // ── NEW: Session Management ──────────────────────────────────
+    public void startSession(PlayerProfile p1, PlayerProfile p2) {
+        sessionStore.setPlayers(p1, p2);
+        sessionStore.setSessionActive(true);
+        System.out.println("[GMAE] Session started: "
+                + p1.getCharacterName() + " & " + p2.getCharacterName());
+    }
+
+    public void endSession() {
+        sessionStore.reset();
+        System.out.println("[GMAE] Session ended.");
+    }
+
+    public boolean isSessionActive() {
+        return sessionStore.isSessionActive();
+    }
+
+    // ── NEW: Adventure Management ────────────────────────────────
+    public void launchAdventure(String adventureType) {
+        MiniAdventureFactory factory = new StandardAdventureFactory();
+        MiniAdventure adventure = factory.createAdventure(adventureType);
+        sessionStore.setActiveAdventure(adventure);
+        adventure.initialize(
+                sessionStore.getPlayer1(),
+                sessionStore.getPlayer2()
+        );
+        System.out.println("[GMAE] Launched: " + adventureType);
+    }
+
+    public List<String> getAvailableAdventures() {
+        return registry.getRegisteredTypes();
+    }
+
+    // ── REUSED: Observer pattern from prior assignment ───────────
+    public void addObserver(GameObserver observer) {
+        observers.add(observer);
+    }
+
+    public void removeObserver(GameObserver observer) {
+        observers.remove(observer);
+    }
+
+    public void notifyObservers(String campaignName, String eventTitle) {
+        for (GameObserver observer : observers) {
+            observer.onGameEvent(campaignName, eventTitle);
+        }
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\MiniAdventureFactory.java ====================
 package gmae.engine;
 
-public class MiniAdventureFactory {
+import gmae.api.MiniAdventure;
+
+// REUSED: Factory Method pattern from RealmFactory (prior assignment)
+public abstract class MiniAdventureFactory {
+    public abstract MiniAdventure createAdventure(String type);
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\SessionStateStore.java ====================
+package gmae.engine;
+
+import gmae.profile.PlayerProfile;
+import gmae.api.MiniAdventure;
+
+public class SessionStateStore {
+
+    private static SessionStateStore instance;
+
+    private PlayerProfile player1;
+    private PlayerProfile player2;
+    private MiniAdventure activeAdventure;
+    private boolean sessionActive;
+
+    private SessionStateStore() {
+        this.sessionActive = false;
+    }
+
+    public static SessionStateStore getInstance() {
+        if (instance == null) {
+            instance = new SessionStateStore();
+        }
+        return instance;
+    }
+
+    public void setPlayers(PlayerProfile p1, PlayerProfile p2) {
+        this.player1 = p1;
+        this.player2 = p2;
+    }
+
+    public PlayerProfile getPlayer1() { return player1; }
+    public PlayerProfile getPlayer2() { return player2; }
+
+    public void setActiveAdventure(MiniAdventure adventure) {
+        this.activeAdventure = adventure;
+    }
+
+    public MiniAdventure getActiveAdventure() { return activeAdventure; }
+
+    public void setSessionActive(boolean active) { this.sessionActive = active; }
+    public boolean isSessionActive() { return sessionActive; }
+
+    public void reset() {
+        player1 = null;
+        player2 = null;
+        activeAdventure = null;
+        sessionActive = false;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\engine\StandardAdventureFactory.java ====================
 package gmae.engine;
 
-public class StandardAdventureFactory {
+import gmae.api.MiniAdventure;
+import gmae.adventures.relicHunt.RelicHuntAdventure;
+import gmae.adventures.timedRaid.TimedRaidAdventure;
+
+// REUSED: Factory Method pattern from StandardRealmFactory (prior assignment)
+public class StandardAdventureFactory extends MiniAdventureFactory {
+
+    @Override
+    public MiniAdventure createAdventure(String type) {
+        switch (type) {
+            case "RelicHunt":
+                return new RelicHuntAdventure();
+            case "TimedRaid":
+                return new TimedRaidAdventure();
+            default:
+                throw new IllegalArgumentException(
+                    "[Factory] Unknown adventure type: " + type);
+        }
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\observer\GameObserver.java ====================
 package gmae.observer;
 
-public class GameObserver {
+public interface GameObserver {
+    void onGameEvent(String campaignName, String eventTitle);
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\observer\ProfileUpdateObserver.java ====================
 package gmae.observer;
 
-public class ProfileUpdateObserver {
+import gmae.profile.PlayerProfile;
+
+public class ProfileUpdateObserver implements GameObserver {
+
+    private final PlayerProfile profile;
+
+    public ProfileUpdateObserver(PlayerProfile profile) {
+        this.profile = profile;
+    }
+
+    @Override
+    public void onGameEvent(String campaignName, String eventTitle) {
+        profile.addQuestEvent(campaignName, eventTitle);
+        System.out.println("[Profile Update] " + profile.getCharacterName()
+                + " — event recorded: " + eventTitle);
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\profile\AchievementRecord.java ====================
@@ -686,7 +1492,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerProfile {
-    private String name;
+    private String characterName;
     private CharacterClass characterClass;
     private List<InventoryItem> inventory;
     private List<String> questHistory;
@@ -695,7 +1501,7 @@ public class PlayerProfile {
     private int totalLosses;
 
     public PlayerProfile(String characterName, CharacterClass characterClass) {
-        this.name = characterName;
+        this.characterName = characterName;
         this.characterClass = characterClass;
         this.inventory = new ArrayList<>();
         this.questHistory = new ArrayList<>();
@@ -719,7 +1525,7 @@ public class PlayerProfile {
     }
 
     public String getCharacterName() {
-        return name;
+        return characterName;
     }
     public CharacterClass getCharacterClass() {
         return characterClass;
@@ -740,11 +1546,14 @@ public class PlayerProfile {
         return totalLosses;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setCharacterName(String characterName) {
+        this.characterName = characterName;
     }
     public void setCharacterClass(CharacterClass characterClass) {
         this.characterClass = characterClass;
+    }
+    public void addQuestEvent(String campaingName, String eventTitle) {
+        this.questHistory.add(campaingName + ": " + eventTitle);
     }
     public void addInventoryItem(InventoryItem item) {
         this.inventory.add(item);
