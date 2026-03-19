@@ -39,4 +39,8 @@ public class Realm {
     public int[][] getRealmGrid() {
         return realmGrid;
     }
+
+    public WorldTime getLocalTime(WorldTime worldTime) {
+        return worldTime.add(this.timeOffset);
+    }
 }
