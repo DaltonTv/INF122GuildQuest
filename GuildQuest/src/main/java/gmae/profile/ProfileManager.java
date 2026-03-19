@@ -5,9 +5,11 @@ import gmae.core.enums.CharacterClass;
 import java.io.*;
 
 public class ProfileManager {
+
     private static final String SAVE_DIR = "profiles/";
 
     public void saveProfile(PlayerProfile profile) throws IOException {
+        new File(SAVE_DIR).mkdirs();
         String filename = SAVE_DIR + profile.getCharacterName() + ".txt";
         try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
             writer.println(profile.getCharacterName());
@@ -28,7 +30,11 @@ public class ProfileManager {
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String name = reader.readLine();
             CharacterClass cls = CharacterClass.valueOf(reader.readLine());
+            int wins = Integer.parseInt(reader.readLine());
+            int loses = Integer.parseInt(reader.readLine());
             PlayerProfile profile = new PlayerProfile(name, cls);
+            profile.setTotalWins(wins);
+            profile.setTotalLosses(loses);
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("HISTORY:")) {

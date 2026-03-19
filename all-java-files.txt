@@ -1,14 +1,44 @@
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\Relic.java ====================
 package gmae.adventures.relicHunt;
 
-public class Relic {
+import gmae.core.entity.GridPosition;
+
+public class Relic 
+{
+    private String name;
+    private GridPosition position;
+    private boolean collected;
+
+    public Relic(String name, int x, int y) 
+    {
+        this.name = name;
+        this.position = new GridPosition(x, y);
+        this.collected = false;
+    }
+
+    public String getName() 
+    {
+        return name;
+    }
+
+    public GridPosition getPosition() 
+    {
+        return position;
+    }
+
+    public boolean isCollected() 
+    {
+        return collected;
+    }
+
+    public void collect() 
+    {
+        this.collected = true;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntAdventure.java ====================
 package gmae.adventures.relicHunt;
-
-import java.util.HashSet;
-import java.util.Set;
 
 import gmae.api.GameState;
 import gmae.api.MiniAdventure;
@@ -16,12 +46,328 @@ import gmae.api.PlayerInput;
 import gmae.api.TurnResult;
 import gmae.profile.PlayerProfile;
 
-public class RelicHuntAdventure implements MiniAdventure 
-{
+public class RelicHuntAdventure implements MiniAdventure {
 
     private PlayerProfile player1;
     private PlayerProfile player2;
 
+    private RelicHuntMap map;
+    private RelicHuntState state;
+
+    @Override
+    public void initialize(PlayerProfile p1, PlayerProfile p2) {
+        this.player1 = p1;
+        this.player2 = p2;
+
+        this.map = new RelicHuntMap(5, 5);
+        this.state = new RelicHuntState();
+
+        map.addRelic(new Relic("Ancient Orb", 1, 1));
+        map.addRelic(new Relic("Crystal Skull", 2, 3));
+        map.addRelic(new Relic("Lost Crown", 3, 1));
+    }
+
+    @Override
+    public TurnResult advanceTurn(PlayerInput input) {
+        if (state.isComplete()) {
+            return new TurnResult("The game is already over.", getState(), true);
+        }
+
+        if (input.getPlayerId() != state.getCurrentPlayerTurn()) {
+            return new TurnResult(
+                    "It is not Player " + input.getPlayerId() + "'s turn.",
+                    getState(),
+                    false
+            );
+        }
+
+        moveCurrentPlayer(input.getAction());
+        collectRelicIfPresent();
+        updateGameStatus();
+
+        return new TurnResult(state.getStatusMessage(), getState(), state.isComplete());
+    }
+
+    private void moveCurrentPlayer(PlayerInput.Action action) {
+        int x;
+        int y;
+
+        if (state.getCurrentPlayerTurn() == 1) {
+            x = state.getPlayer1X();
+            y = state.getPlayer1Y();
+        } else {
+            x = state.getPlayer2X();
+            y = state.getPlayer2Y();
+        }
+
+        int newX = x;
+        int newY = y;
+
+        if (action == PlayerInput.Action.MOVE_UP) {
+            newY = y - 1;
+        }
+        else if (action == PlayerInput.Action.MOVE_DOWN) {
+            newY = y + 1;
+        }
+        else if (action == PlayerInput.Action.MOVE_LEFT) {
+            newX = x - 1;
+        }
+        else if (action == PlayerInput.Action.MOVE_RIGHT) {
+            newX = x + 1;
+        }
+
+        if (map.isInsideMap(newX, newY)) {
+            if (state.getCurrentPlayerTurn() == 1) {
+                state.setPlayer1X(newX);
+                state.setPlayer1Y(newY);
+            } else {
+                state.setPlayer2X(newX);
+                state.setPlayer2Y(newY);
+            }
+        }
+    }
+
+    private void collectRelicIfPresent() {
+        int x;
+        int y;
+        String playerName;
+
+        if (state.getCurrentPlayerTurn() == 1) {
+            x = state.getPlayer1X();
+            y = state.getPlayer1Y();
+            playerName = player1.getCharacterName();
+        } else {
+            x = state.getPlayer2X();
+            y = state.getPlayer2Y();
+            playerName = player2.getCharacterName();
+        }
+
+        Relic relic = map.getRelicAt(x, y);
+
+        if (relic != null) {
+            relic.collect();
+
+            if (state.getCurrentPlayerTurn() == 1) {
+                state.addPlayer1Score();
+            } else {
+                state.addPlayer2Score();
+            }
+
+            state.setStatusMessage(playerName + " found the relic: " + relic.getName() + "!");
+        }
+    }
+
+    private void updateGameStatus() {
+        if (state.getPlayer1Score() >= 2) {
+            state.setComplete(true);
+            state.setWinner(player1.getCharacterName());
+            state.setStatusMessage(state.getWinner() + " wins Relic Hunt!");
+            return;
+        }
+
+        if (state.getPlayer2Score() >= 2) {
+            state.setComplete(true);
+            state.setWinner(player2.getCharacterName());
+            state.setStatusMessage(state.getWinner() + " wins Relic Hunt!");
+            return;
+        }
+
+        if (map.getRemainingRelicCount() == 0) {
+            state.setComplete(true);
+
+            if (state.getPlayer1Score() > state.getPlayer2Score()) {
+                state.setWinner(player1.getCharacterName());
+                state.setStatusMessage(state.getWinner() + " wins Relic Hunt!");
+            }
+            else if (state.getPlayer2Score() > state.getPlayer1Score()) {
+                state.setWinner(player2.getCharacterName());
+                state.setStatusMessage(state.getWinner() + " wins Relic Hunt!");
+            }
+            else {
+                state.setWinner("Tie");
+                state.setStatusMessage("The game ended in a tie.");
+            }
+
+            return;
+        }
+
+        if (state.getCurrentPlayerTurn() == 1) {
+            state.setCurrentPlayerTurn(2);
+        } else {
+            state.setCurrentPlayerTurn(1);
+        }
+
+        state.setStatusMessage("Turn complete. Player " + state.getCurrentPlayerTurn() + "'s turn.");
+    }
+
+    @Override
+    public GameState getState() {
+        return new GameState(
+                map.buildBoardDisplay(
+                        state.getPlayer1X(),
+                        state.getPlayer1Y(),
+                        state.getPlayer2X(),
+                        state.getPlayer2Y()
+                ),
+                state.getPlayer1Score(),
+                state.getCurrentPlayerTurn(),
+                state.getPlayer2Score(),
+                state.getStatusMessage()
+        );
+    }
+
+    @Override
+    public boolean isComplete() {
+        return state.isComplete();
+    }
+
+    @Override
+    public String getWinner() {
+        return state.getWinner();
+    }
+
+    @Override
+    public void reset() {
+        if (player1 != null && player2 != null) {
+            initialize(player1, player2);
+        }
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntMap.java ====================
+package gmae.adventures.relicHunt;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class RelicHuntMap 
+{
+    private int width;
+    private int height;
+    private List<Relic> relics;
+
+    public RelicHuntMap(int width, int height) 
+    {
+        this.width = width;
+        this.height = height;
+        this.relics = new ArrayList<Relic>();
+    }
+
+    public int getWidth() 
+    {
+        return width;
+    }
+
+    public int getHeight() 
+    {
+        return height;
+    }
+
+    public List<Relic> getRelics() 
+    {
+        return relics;
+    }
+
+    public void addRelic(Relic relic) 
+    {
+        relics.add(relic);
+    }
+
+    public boolean isInsideMap(int x, int y) 
+    {
+        if (x < 0 || x >= width) {
+            return false;
+        }
+
+        if (y < 0 || y >= height) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public Relic getRelicAt(int x, int y) 
+    {
+        int i = 0;
+        while (i < relics.size()) 
+        {
+            Relic relic = relics.get(i);
+
+            if (!relic.isCollected() && relic.getPosition().getX() == x && relic.getPosition().getY() == y) 
+            {
+                return relic;
+            }
+
+            i = i + 1;
+        }
+
+        return null;
+    }
+
+    public int getRemainingRelicCount() 
+    {
+        int count = 0;
+
+        int i = 0;
+        while (i < relics.size()) 
+        {
+            if (!relics.get(i).isCollected()) 
+            {
+                count = count + 1;
+            }
+            i = i + 1;
+        }
+
+        return count;
+    }
+
+    public String buildBoardDisplay(int player1X, int player1Y, int player2X, int player2Y) {
+        StringBuilder board = new StringBuilder();
+
+        int y = 0;
+        while (y < height) 
+        {
+            int x = 0;
+            while (x < width) 
+            {
+
+                if (player1X == x && player1Y == y && player2X == x && player2Y == y) 
+                {
+                    board.append("B ");
+                }
+                else if (player1X == x && player1Y == y) 
+                {
+                    board.append("1 ");
+                }
+                else if (player2X == x && player2Y == y) 
+                {
+                    board.append("2 ");
+                }
+                else if (getRelicAt(x, y) != null) 
+                {
+                    board.append("R ");
+                }
+                else 
+                {
+                    board.append(". ");
+                }
+
+                x = x + 1;
+            }
+
+            board.append("\n");
+            y = y + 1;
+        }
+
+        return board.toString();
+    }
+}
+
+==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntState.java ====================
+package gmae.adventures.relicHunt;
+
+public class RelicHuntState 
+{
     private int player1X;
     private int player1Y;
     private int player2X;
@@ -35,262 +381,303 @@ public class RelicHuntAdventure implements MiniAdventure
     private String winner;
     private String statusMessage;
 
-    private final int width = 5;
-    private final int height = 5;
-
-    private Set<String> relicPositions;
-
-    @Override
-    public void initialize(PlayerProfile p1, PlayerProfile p2) 
+    public RelicHuntState() 
     {
-        this.player1 = p1;
-        this.player2 = p2;
-
         this.player1X = 0;
         this.player1Y = 0;
-
         this.player2X = 4;
         this.player2Y = 4;
-
         this.player1Score = 0;
         this.player2Score = 0;
-
         this.currentPlayerTurn = 1;
         this.complete = false;
         this.winner = "";
         this.statusMessage = "Relic Hunt started! Player 1 goes first.";
-
-        this.relicPositions = new HashSet<String>();
-        relicPositions.add("1,1");
-        relicPositions.add("2,3");
-        relicPositions.add("3,1");
     }
 
-    @Override
-    public TurnResult advanceTurn(PlayerInput input) 
+    public int getPlayer1X() 
     {
-        if (complete) {
-            return new TurnResult("The game is already over.", getState(), true);
-        }
-
-        if (input.getPlayerId() != currentPlayerTurn) 
-            {
-            return new TurnResult("It is not Player " + input.getPlayerId() + "'s turn.", getState(), false);
-        }
-
-        moveCurrentPlayer(input.getAction());
-        collectRelicIfPresent();
-
-        if (player1Score >= 2) 
-            {
-            complete = true;
-            winner = player1.getCharacterName();
-            statusMessage = winner + " wins Relic Hunt!";
-        } 
-        else if (player2Score >= 2) 
-        {
-            complete = true;
-            winner = player2.getCharacterName();
-            statusMessage = winner + " wins Relic Hunt!";
-        } 
-        else if (relicPositions.isEmpty()) 
-        {
-            complete = true;
-
-            if (player1Score > player2Score) 
-            {
-                winner = player1.getCharacterName();
-                statusMessage = winner + " wins Relic Hunt!";
-            } 
-            else if (player2Score > player1Score) 
-            {
-                winner = player2.getCharacterName();
-                statusMessage = winner + " wins Relic Hunt!";
-            } 
-            else 
-            {
-                winner = "Tie";
-                statusMessage = "The game ended in a tie.";
-            }
-        } 
-        else 
-        {
-            if (currentPlayerTurn == 1) 
-            {
-                currentPlayerTurn = 2;
-            } 
-            else 
-            {
-                currentPlayerTurn = 1;
-            }
-
-            statusMessage = "Turn complete. Player " + currentPlayerTurn + "'s turn.";
-        }
-
-        return new TurnResult(statusMessage, getState(), complete);
+        return player1X;
     }
 
-    private void moveCurrentPlayer(PlayerInput.Action action) 
+    public void setPlayer1X(int player1X) 
     {
-        if (currentPlayerTurn == 1) 
-        {
-            if (action == PlayerInput.Action.MOVE_UP && player1Y > 0) 
-            {
-                player1Y--;
-            } 
-            else if (action == PlayerInput.Action.MOVE_DOWN && player1Y < height - 1) 
-            {
-                player1Y++;
-            } 
-            else if (action == PlayerInput.Action.MOVE_LEFT && player1X > 0) 
-            {
-                player1X--;
-            } 
-            else if (action == PlayerInput.Action.MOVE_RIGHT && player1X < width - 1) 
-            {
-                player1X++;
-            }
-        } 
-        else 
-        {
-            if (action == PlayerInput.Action.MOVE_UP && player2Y > 0) 
-            {
-                player2Y--;
-            } 
-            else if (action == PlayerInput.Action.MOVE_DOWN && player2Y < height - 1) 
-            {
-                player2Y++;
-            } 
-            else if (action == PlayerInput.Action.MOVE_LEFT && player2X > 0) 
-            {
-                player2X--;
-            } 
-            else if (action == PlayerInput.Action.MOVE_RIGHT && player2X < width - 1) 
-            {
-                player2X++;
-            }
-        }
+        this.player1X = player1X;
     }
 
-    private void collectRelicIfPresent() 
+    public int getPlayer1Y() 
     {
-        String currentPosition;
-
-        if (currentPlayerTurn == 1) 
-        {
-            currentPosition = player1X + "," + player1Y;
-
-            if (relicPositions.contains(currentPosition)) 
-            {
-                relicPositions.remove(currentPosition);
-                player1Score++;
-                statusMessage = player1.getCharacterName() + " found a relic!";
-            }
-        } 
-        else 
-        {
-            currentPosition = player2X + "," + player2Y;
-
-            if (relicPositions.contains(currentPosition)) 
-            {
-                relicPositions.remove(currentPosition);
-                player2Score++;
-                statusMessage = player2.getCharacterName() + " found a relic!";
-            }
-        }
+        return player1Y;
     }
 
-    @Override
-    public GameState getState() 
+    public void setPlayer1Y(int player1Y)
     {
-        return new GameState(
-                buildBoardDisplay(),
-                player1Score,
-                currentPlayerTurn,
-                player2Score,
-                statusMessage
-        );
+        this.player1Y = player1Y;
     }
 
-    @Override
+    public int getPlayer2X() 
+    {
+        return player2X;
+    }
+
+    public void setPlayer2X(int player2X) 
+    {
+        this.player2X = player2X;
+    }
+
+    public int getPlayer2Y() 
+    {
+        return player2Y;
+    }
+
+    public void setPlayer2Y(int player2Y) 
+    {
+        this.player2Y = player2Y;
+    }
+
+    public int getPlayer1Score() 
+    {
+        return player1Score;
+    }
+
+    public void addPlayer1Score() 
+    {
+        this.player1Score = this.player1Score + 1;
+    }
+
+    public int getPlayer2Score() 
+    {
+        return player2Score;
+    }
+
+    public void addPlayer2Score() 
+    {
+        this.player2Score = this.player2Score + 1;
+    }
+
+    public int getCurrentPlayerTurn() 
+    {
+        return currentPlayerTurn;
+    }
+
+    public void setCurrentPlayerTurn(int currentPlayerTurn) 
+    {
+        this.currentPlayerTurn = currentPlayerTurn;
+    }
+
     public boolean isComplete() 
     {
         return complete;
     }
 
-    @Override
+    public void setComplete(boolean complete) 
+    {
+        this.complete = complete;
+    }
+
     public String getWinner() 
     {
         return winner;
     }
 
-    @Override
-    public void reset() 
+    public void setWinner(String winner) 
     {
-        if (player1 != null && player2 != null) 
-        {
-            initialize(player1, player2);
-        }
+        this.winner = winner;
     }
 
-    private String buildBoardDisplay() 
+    public String getStatusMessage() 
     {
-        StringBuilder board = new StringBuilder();
-
-        for (int y = 0; y < height; y++) 
-        {
-            for (int x = 0; x < width; x++) 
-            {
-                if (player1X == x && player1Y == y && player2X == x && player2Y == y) 
-                {
-                    board.append("B ");
-                } 
-                else if (player1X == x && player1Y == y) 
-                {
-                    board.append("1 ");
-                } 
-                else if (player2X == x && player2Y == y) 
-                {
-                    board.append("2 ");
-                } 
-                else if (relicPositions.contains(x + "," + y)) 
-                {
-                    board.append("R ");
-                } 
-                else 
-                {
-                    board.append(". ");
-                }
-            }
-            board.append("\n");
-        }
-
-        return board.toString();
+        return statusMessage;
     }
-}
 
-==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntMap.java ====================
-package gmae.adventures.relicHunt;
-
-public class RelicHuntMap {
-}
-
-==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\relicHunt\RelicHuntState.java ====================
-package gmae.adventures.relicHunt;
-
-public class RelicHuntState {
+    public void setStatusMessage(String statusMessage) 
+    {
+        this.statusMessage = statusMessage;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\RaidObjective.java ====================
 package gmae.adventures.timedRaid;
 
+import gmae.builder.QuestEventBuilder;
+import gmae.core.entity.InventoryItem;
+import gmae.core.entity.QuestEvent;
+import gmae.core.entity.Realm;
+import gmae.core.entity.WorldTime;
+
 public class RaidObjective {
+    private final String label;
+    private final int x;
+    private final int y;
+    private final InventoryItem reward;
+    private final QuestEvent questEvent;
+    private boolean complete;
+
+    private RaidObjective(String label, int x, int y,
+                          InventoryItem reward, QuestEvent questEvent) {
+        this.label = label;
+        this.x = x;
+        this.y = y;
+        this.reward = reward;
+        this.questEvent = questEvent;
+        this.complete = false;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+    public int getX() {
+        return x;
+    }
+    public int getY() {
+        return y;
+    }
+    public InventoryItem getReward() {
+        return reward;
+    }
+    public QuestEvent getQuestEvent() {
+        return questEvent;
+    }
+    public boolean isComplete() {
+        return complete;
+    }
+
+    public void markComplete() {
+        this.complete = true;
+    }
+
+    @Override
+    public String toString() {
+        String status = complete ? "[DONE]" : "[     ]";
+        return status + " " + label + " @ (" + x + ", " + y + ")";
+    }
+
+    public static class Builder {
+        private final String label;
+        private final int x;
+        private final int y;
+
+        private Realm realm;
+        private WorldTime startTime;
+        private WorldTime endTime;
+
+        private InventoryItem reward;
+
+        public Builder(String label, int x, int y) {
+            this.label = label;
+            this.x = x;
+            this.y = y;
+        }
+
+        public Builder realm(Realm realm) {
+            this.realm = realm;
+            return this;
+        }
+
+        public Builder startTime(WorldTime startTime) {
+            this.startTime = startTime;
+            return this;
+        }
+
+        public Builder endTime(WorldTime endTime) {
+            this.endTime = endTime;
+            return this;
+        }
+
+        public Builder reward(InventoryItem reward) {
+            this.reward = reward;
+            return this;
+        }
+
+        public RaidObjective build() {
+            QuestEventBuilder questBuilder = new QuestEventBuilder()
+                    .setName(label)
+                    .setRealm(realm)
+                    .setStartTime(startTime);
+
+            if (endTime != null) {
+                questBuilder.setEndTime(endTime);
+            }
+
+            QuestEvent questEvent = questBuilder.build();
+
+            return new RaidObjective(label, x, y, reward, questEvent);
+        }
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\RaidTimer.java ====================
 package gmae.adventures.timedRaid;
 
+import gmae.core.entity.WorldTime;
+import gmae.core.time.WorldClock;
+
 public class RaidTimer {
+    private static final int MINUTES_PER_TURN = 5;
+
+    private final WorldClock worldClock;
+    private final WorldTime startTime;
+    private final WorldTime timeLimit;
+    private WorldTime elapsed;
+    private boolean expired;
+
+    public RaidTimer(int timeLimitMinutes) {
+        this.worldClock = WorldClock.getInstance();
+        this.startTime = worldClock.now();
+        this.timeLimit = new WorldTime(0, 0, timeLimitMinutes);
+        this.elapsed = new WorldTime(0, 0, 0);
+        this.expired = false;
+    }
+
+    public void tick() {
+        if (expired) {
+            return;
+        }
+
+        worldClock.advance(MINUTES_PER_TURN);
+        elapsed = elapsed.add(MINUTES_PER_TURN);
+
+        if(elapsed.toTotalMinutes() >= timeLimit.toTotalMinutes()) {
+            expired = true;
+        }
+    }
+
+    public boolean isExpired() {
+        return expired;
+    }
+    public WorldTime getElapsed() {
+        return elapsed;
+    }
+    public WorldTime getTimeLimit() {
+        return timeLimit;
+    }
+
+    public WorldTime getTimeRemaining() {
+        if (expired) {
+            return new WorldTime(0, 0, 0);
+        }
+        int remainingMinutes = timeLimit.toTotalMinutes() - elapsed.toTotalMinutes();
+        return new WorldTime(0, 0,  remainingMinutes);
+    }
+
+    public String getFormattedTimeRemaining() {
+        return getTimeRemaining().toString();
+    }
+
+    public int getPercentElapsed() {
+        if (timeLimit.toTotalMinutes() == 0) {
+            return 100;
+        }
+        int pct = (elapsed.toTotalMinutes() * 100) / timeLimit.toTotalMinutes();
+        return Math.min(pct, 100);
+    }
+
+    public void reset(int timeLimitMinutes) {
+        this.elapsed = new WorldTime(0, 0, 0);
+        this.expired = false;
+        worldClock.setTime(startTime);
+    }
+
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\TimedRaidAdventure.java ====================
@@ -337,7 +724,189 @@ public class TimedRaidAdventure implements MiniAdventure {
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\adventures\timedRaid\TimedRaidState.java ====================
 package gmae.adventures.timedRaid;
 
+import gmae.core.entity.GridPosition;
+import gmae.profile.PlayerProfile;
+
+import java.util.List;
+
 public class TimedRaidState {
+    //Player Positions
+    private GridPosition p1Position;
+    private GridPosition p2Position;
+
+    //Objectives
+    private final List<RaidObjective> objectives;
+    private int objectivesCompleted;
+
+    //Timer
+    private final RaidTimer timer;
+
+    //Turn/Completion
+    private int currentPlayerTurn;  //1 or 2
+    private boolean complete;
+    private boolean success;
+
+    //Status
+    private String statusMessage;
+
+    public TimedRaidState(List<RaidObjective> objectives, int timeLimitMinutes) {
+        this.objectives = objectives;
+        this.objectivesCompleted = 0;
+        this.timer = new RaidTimer(timeLimitMinutes);
+        this.p1Position = new GridPosition(0, 0);
+        this.p2Position = new GridPosition(4, 4);
+        this.currentPlayerTurn = 1;
+        this.complete = false;
+        this.success = false;
+        this.statusMessage = "Timed Raid started! Complete all objectives before time runs out!";
+    }
+
+    //Player positions
+    public GridPosition getP1Position() {
+        return p1Position;
+    }
+    public GridPosition getP2Position() {
+        return p2Position;
+    }
+    public void setP1Position(GridPosition position) {
+        this.p1Position = position;
+    }
+    public void setP2Position(GridPosition position) {
+        this.p2Position = position;
+    }
+    public GridPosition getCurrentPlayerPosition() {
+        return currentPlayerTurn == 1 ? p1Position : p2Position;
+    }
+
+    //Objectives
+    public List<RaidObjective> getObjectives() {
+        return objectives;
+    }
+    public int getObjectivesCompleted() {
+        return objectivesCompleted;
+    }
+    public int getTotalObjectives() {
+        return objectives.size();
+    }
+    /**
+     * Checks if incomplete objective at given position.
+     * If found, mark complete, increment counter, and return
+     * **/
+    public boolean tryCompleteObjectiveAt(int x, int y) {
+        for (RaidObjective objective : objectives) {
+            if (!objective.isComplete() && objective.getX() == x && objective.getY() == y) {
+                objective.markComplete();
+                objectivesCompleted++;
+                return true;
+            }
+        }
+        return false;
+    }
+    public boolean allObjectivesComplete() {
+        return objectivesCompleted >= objectives.size();
+    }
+
+    //Timer
+    public RaidTimer getTimer() {
+        return timer;
+    }
+    //Advance time
+    public void tickTimer() {
+        timer.tick();
+    }
+    public boolean isTimedOut() {
+        return timer.isExpired();
+    }
+    public String getFormattedTimeRemaining() {
+        return timer.getFormattedTimeRemaining();
+    }
+
+    //Turn/completion
+    public int getCurrentPlayerTurn() {
+        return currentPlayerTurn;
+    }
+    public void advanceTurn() {
+        currentPlayerTurn = (currentPlayerTurn == 1) ? 2 : 1;
+    }
+    public boolean isComplete() {
+        return complete;
+    }
+    public boolean isSuccess() {
+        return success;
+    }
+    public void setComplete(boolean complete) {
+        this.complete = complete;
+    }
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    //Status
+    public String getStatusMessage() {
+        return statusMessage;
+    }
+    public void setStatusMessage(String statusMessage) {
+        this.statusMessage = statusMessage;
+    }
+
+    //Board
+    /**
+     * Renders a 5x5 grid as ASCII string for AdventureView/GameState
+     * Legend:
+     * 1 = p1   2 = p2  B = both players
+     * O = incomplete objective     . = empty tile
+     * X = completed objective (shown in status, not on board)
+     */
+    public String buildBoardDisplay(PlayerProfile p1, PlayerProfile p2) {
+        int width = 5;
+        int height = 5;
+        StringBuilder board = new StringBuilder();
+
+        //Header
+        board.append("Time remaining: ").append(getFormattedTimeRemaining()).append("\n");
+        board.append("Objectives: ").append(objectivesCompleted)
+                .append("/").append(objectives.size()).append("\n\n");
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                boolean isP1 = p1Position.getX() == x && p1Position.getY() == y;
+                boolean isP2 = p2Position.getX() == x && p2Position.getY() == y;
+                boolean isObjective = hasIncompleteObjectiveAt(x, y);
+
+                if (isP1 && isP2) {
+                    board.append("B ");
+                }
+                else if (isP1) {
+                    board.append("1 ");
+                }
+                else if (isP2) {
+                    board.append("2 ");
+                }
+                else if (isObjective) {
+                    board.append("O ");
+                }
+                else {
+                    board.append(". ");
+                }
+            }
+            board.append("\n");
+        }
+
+        board.append("\n")
+                .append(p1.getCharacterName()).append("(P1)   |   ")
+                .append(p2.getCharacterName()).append("(P2)\n");
+
+        return board.toString();
+    }
+
+    private boolean hasIncompleteObjectiveAt(int x, int y) {
+        for (RaidObjective objective : objectives) {
+            if (!objective.isComplete() && objective.getX() == x && objective.getY() == y) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\api\GameState.java ====================
@@ -1085,12 +1654,27 @@ public class WorldTime {
 package gmae.core.enums;
 
 public enum CharacterClass {
+    BARBARIAN,
+    MAGE,
+    PALADIN,
+    DRUID,
+    ROGUE,
+    NECROMANCER,
+    CLERIC,
+    RANGER
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\enums\ItemType.java ====================
 package gmae.core.enums;
 
 public enum ItemType {
+    WEAPON,
+    ARMOR,
+    ACCESSORY,
+    KEY,
+    QUEST_ITEM,
+    CONSUMABLE,
+    MISCELLANEOUS
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\core\enums\PermissionLevel.java ====================
@@ -1558,6 +2142,12 @@ public class PlayerProfile {
     public void addInventoryItem(InventoryItem item) {
         this.inventory.add(item);
     }
+    public void setTotalWins(int totalWins) {
+        this.totalWins = totalWins;
+    }
+    public void setTotalLosses(int totalLosses) {
+        this.totalLosses = totalLosses;
+    }
 }
 
 ==================== C:\Users\ddeni\IdeaProjects\INF122GuildQuest\GuildQuest\src\main\java\gmae\profile\ProfileManager.java ====================
@@ -1568,9 +2158,11 @@ import gmae.core.enums.CharacterClass;
 import java.io.*;
 
 public class ProfileManager {
+
     private static final String SAVE_DIR = "profiles/";
 
     public void saveProfile(PlayerProfile profile) throws IOException {
+        new File(SAVE_DIR).mkdirs();
         String filename = SAVE_DIR + profile.getCharacterName() + ".txt";
         try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
             writer.println(profile.getCharacterName());
@@ -1591,7 +2183,12 @@ public class ProfileManager {
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String name = reader.readLine();
             CharacterClass cls = CharacterClass.valueOf(reader.readLine());
+            int wins = Integer.parseInt(reader.readLine());
+            int loses = Integer.parseInt(reader.readLine());
             PlayerProfile profile = new PlayerProfile(name, cls);
+            profile.setCharacterClass(CharacterClass.valueOf(reader.readLine()));
+            profile.setTotalWins(wins);
+            profile.setTotalLosses(loses);
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("HISTORY:")) {
